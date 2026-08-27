@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>지안이 칭찬스티커</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#8067DC">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="칭찬스티커">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FFF6DC; --paper:#FFFDF7; --ink:#3A3238; --sub:#8A7E68;
+    --coral:#FF8C7A; --yellow:#FFD166; --grape:#8067DC; --mint:#7FD1C0; --line:#F0E4C8;
+    --shadow: 0 6px 0 rgba(0,0,0,0.06);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  #bgLayer{
+    position:fixed; inset:0; z-index:-2;
+    background:
+      radial-gradient(circle at 2px 2px, #F3E4BE 1.4px, transparent 1.4px) 0 0/22px 22px,
+      var(--bg);
+    background-size:cover; background-position:center;
+  }
+  #bgTint{ position:fixed; inset:0; z-index:-1; background:rgba(255,246,220,0.72); backdrop-filter: blur(0px); }
+  body.has-bg #bgTint{ background:rgba(255,251,240,0.62); }
+  body{
+    min-height:100vh; font-family:'Gowun Dodum','Noto Sans KR',sans-serif; color:var(--ink);
+    display:flex; justify-content:center; padding:20px 12px 60px;
+  }
+  .app{ width:100%; max-width:480px; }
+  .title-row{ text-align:center; margin-bottom:14px; position:relative; }
+  .title-row h1{ font-family:'Jua',sans-serif; font-weight:400; font-size:26px; color:var(--grape); margin:0 0 2px; letter-spacing:-0.5px; }
+  .title-row p{ margin:0; font-size:13px; color:var(--sub); }
+  .bg-settings-btn{
+    position:absolute; right:0; top:0; width:34px; height:34px; border-radius:50%;
+    border:none; background:var(--paper); box-shadow:0 3px 0 rgba(0,0,0,0.06); font-size:15px; cursor:pointer;
+  }
+
+  .top-tabs{ display:flex; gap:8px; margin-bottom:12px; }
+  .top-tab{
+    flex:1; text-align:center; padding:11px 6px; border-radius:16px; background:#F0EBDC;
+    color:var(--sub); font-weight:700; font-size:14px; cursor:pointer; border:2px solid transparent;
+  }
+  .top-tab.active{ background:var(--grape); color:#fff; }
+
+  .card{
+    background:var(--paper); border-radius:26px; padding:16px 14px 20px;
+    box-shadow:var(--shadow), 0 2px 14px rgba(58,50,56,0.08); border:1px solid var(--line); margin-bottom:14px;
+  }
+  .month-nav{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; gap:6px; }
+  .month-nav button{
+    width:36px;height:36px; border-radius:50%; border:none; background:var(--yellow);
+    font-family:'Jua',sans-serif; font-size:16px; color:var(--ink); cursor:pointer; box-shadow:0 3px 0 rgba(0,0,0,0.08);
+    flex:0 0 auto;
+  }
+  .month-nav button:active{ transform:translateY(2px); box-shadow:none; }
+  .month-nav h2{ font-family:'Jua',sans-serif; font-weight:400; font-size:19px; margin:0; color:var(--ink); flex:1; text-align:center; }
+  .month-nav .del{ background:#FBE3DD; color:var(--coral); font-size:12px; width:auto; padding:0 10px; border-radius:12px; }
+  .month-nav .back{ background:#EEF0FB; color:var(--grape); font-size:13px; width:auto; padding:0 12px; border-radius:12px; }
+
+  .progress-block + .progress-block{ margin-top:14px; }
+  .progress-label{ font-size:12px; color:var(--grape); font-weight:700; margin-bottom:4px; }
+  .progress-msg{ font-size:13px; color:var(--grape); margin-bottom:6px; font-weight:600; text-align:center; }
+  .progress-bar{ height:12px; background:#F0EBDC; border-radius:8px; overflow:hidden; position:relative; }
+  .progress-fill{ height:100%; background:linear-gradient(90deg,var(--coral),var(--yellow)); border-radius:8px; transition:width .5s ease; }
+  .goal-row{ display:flex; justify-content:space-between; font-size:11px; color:var(--sub); margin-top:4px; }
+  .goal-row input{ width:38px; border:none; border-bottom:1px solid var(--sub); background:transparent; text-align:center; font-size:11px; color:var(--sub); }
+
+  .period-info{ text-align:center; font-size:12px; color:var(--sub); margin-bottom:10px; }
+
+  .weekdays{ display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:6px; }
+  .weekdays div{ text-align:center; font-size:12px; color:var(--sub); font-weight:600; }
+  .weekdays div:nth-child(1){ color:var(--coral); }
+  .weekdays div:nth-child(7){ color:var(--grape); }
+  .grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+  .cell{
+    position:relative; aspect-ratio:1/1; border-radius:14px; background:#FBF8EE;
+    border:1.5px solid var(--line); display:flex; align-items:flex-start; justify-content:flex-start;
+    cursor:pointer; overflow:visible; -webkit-tap-highlight-color:transparent;
+  }
+  .cell.empty{ background:transparent; border:none; cursor:default; }
+  .cell.today{ border-color:var(--coral); border-width:2px; }
+  .daynum{ font-size:11px; color:var(--sub); padding:4px 6px; font-weight:600; z-index:2; }
+  .cell.sun .daynum{ color:#E8877A; }
+  .cell.sat .daynum{ color:#8B7FD1; }
+  .stamp{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+  .stamp .badge{ font-size:30px; filter: drop-shadow(0 2px 1px rgba(0,0,0,0.15)); transform-origin:center; }
+  @keyframes stampDown{
+    0%{ transform:scale(2.6) rotate(var(--rot)); opacity:0; }
+    55%{ transform:scale(0.85) rotate(var(--rot)); opacity:1; }
+    75%{ transform:scale(1.12) rotate(var(--rot)); }
+    100%{ transform:scale(1) rotate(var(--rot)); opacity:1; }
+  }
+  .stamp.pop .badge{ animation: stampDown .38s cubic-bezier(.2,1.4,.4,1) both; }
+  .ring{ position:absolute; inset:0; border-radius:50%; border:3px solid currentColor; opacity:0; }
+  @keyframes ringPulse{ 0%{ transform:scale(0.4); opacity:.55; } 100%{ transform:scale(1.5); opacity:0; } }
+  .stamp.pop .ring{ animation: ringPulse .45s ease-out both; }
+  .note-dot{ position:absolute; bottom:4px; right:5px; width:6px;height:6px; border-radius:50%; background:var(--mint); z-index:3; }
+
+  .period-card{
+    background:#FBF8EE; border:1.5px solid var(--line); border-radius:18px; padding:14px; margin-bottom:10px; cursor:pointer;
+  }
+  .period-card-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .period-card-head strong{ font-family:'Jua',sans-serif; font-weight:400; font-size:15px; color:var(--ink); }
+  .period-card-head span{ font-size:11px; color:var(--sub); }
+  .mini-bar{ height:9px; background:#F0EBDC; border-radius:6px; overflow:hidden; margin-top:6px; }
+  .mini-fill{ height:100%; background:linear-gradient(90deg,var(--coral),var(--yellow)); }
+  .mini-count{ font-size:11px; color:var(--sub); margin-top:4px; text-align:right; }
+  .add-period-btn{
+    width:100%; padding:13px; border-radius:16px; border:2px dashed var(--sub); background:transparent;
+    color:var(--sub); font-family:'Jua',sans-serif; font-size:14px; cursor:pointer;
+  }
+  .empty-msg{ text-align:center; font-size:13px; color:var(--sub); padding:14px 0; }
+
+  .overlay{
+    position:fixed; inset:0; background:rgba(58,50,56,0.35);
+    display:flex; align-items:flex-end; justify-content:center; z-index:50;
+    opacity:0; pointer-events:none; transition:opacity .2s ease;
+  }
+  .overlay.show{ opacity:1; pointer-events:auto; }
+  .sheet{
+    width:100%; max-width:480px; background:var(--paper); border-radius:26px 26px 0 0;
+    padding:18px 18px 26px; transform:translateY(30px); transition:transform .25s cubic-bezier(.2,1,.4,1);
+    box-shadow:0 -6px 24px rgba(0,0,0,0.15); max-height:85vh; overflow-y:auto;
+  }
+  .overlay.show .sheet{ transform:translateY(0); }
+  .sheet-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .sheet-head h3{ font-family:'Jua',sans-serif; font-weight:400; font-size:17px; margin:0; color:var(--ink); }
+  .sheet-head button{ border:none; background:#F0EBDC; width:30px;height:30px; border-radius:50%; font-size:14px; cursor:pointer; color:var(--sub); }
+  .sticker-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:8px; }
+  .sticker-btn{
+    aspect-ratio:1/1; border-radius:18px; border:2px solid var(--line); display:flex;
+    align-items:center; justify-content:center; font-size:30px; cursor:pointer; transition:transform .12s ease; background:#FBF8EE;
+  }
+  .sticker-btn:active{ transform:scale(0.88); }
+  .sticker-btn.selected{ border-color:var(--grape); background:#F1EDFB; box-shadow:0 0 0 2px var(--grape) inset; }
+  .note-input{
+    width:100%; min-height:64px; border-radius:14px; border:1.5px solid var(--line); background:#FBF8EE;
+    padding:10px 12px; font-family:'Gowun Dodum',sans-serif; font-size:13px; color:var(--ink);
+    resize:none; margin-bottom:10px; outline:none;
+  }
+  .note-input:focus{ border-color:var(--mint); }
+  .field-label{ font-size:12px; color:var(--sub); margin:8px 2px 4px; font-weight:600; }
+  .field-input{
+    width:100%; padding:9px 12px; border-radius:12px; border:1.5px solid var(--line);
+    background:#FBF8EE; font-family:'Gowun Dodum',sans-serif; font-size:14px; color:var(--ink); outline:none;
+  }
+  .field-input:focus{ border-color:var(--mint); }
+  .field-row{ display:flex; gap:8px; }
+  .field-row > div{ flex:1; }
+  .save-btn{
+    width:100%; padding:11px; border-radius:14px; border:none; background:var(--grape); color:#fff;
+    font-family:'Jua',sans-serif; font-size:14px; cursor:pointer; margin-bottom:8px; margin-top:6px;
+  }
+  .save-btn:active{ transform:translateY(1px); }
+  .remove-btn{
+    width:100%; padding:10px; border-radius:14px; border:1.5px dashed var(--sub); background:transparent;
+    color:var(--sub); font-family:'Gowun Dodum',sans-serif; font-size:13px; cursor:pointer;
+  }
+  .confetti{ position:fixed; width:8px;height:8px; border-radius:2px; pointer-events:none; z-index:60; }
+  .footer-note{ text-align:center; font-size:11px; color:var(--sub); margin-top:2px; opacity:.8; }
+  .err-msg{ font-size:12px; color:var(--coral); margin-top:4px; min-height:14px; }
+
+  .bg-preview{
+    width:100%; height:120px; border-radius:14px; background:#F0EBDC center/cover no-repeat;
+    display:flex; align-items:center; justify-content:center; color:var(--sub); font-size:12px; margin-bottom:12px; border:1.5px dashed var(--line);
+  }
+  .file-btn{
+    display:block; width:100%; text-align:center; padding:11px; border-radius:14px; background:var(--mint);
+    color:#fff; font-family:'Jua',sans-serif; font-size:14px; cursor:pointer; margin-bottom:8px;
+  }
+  .file-btn input{ display:none; }
+</style>
+</head>
+<body>
+<div id="bgLayer"></div>
+<div id="bgTint"></div>
+<div class="app">
+  <div class="title-row">
+    <h1>🌟 지안이 칭찬스티커 🌟</h1>
+    <p>잘한 일이 있으면 도장을 콕! 찍고 메모도 남겨보세요</p>
+    <button class="bg-settings-btn" id="bgSettingsBtn" title="배경화면 설정" style="right:40px;">🖼️</button>
+    <button class="bg-settings-btn" id="ghSettingsBtn" title="GitHub 연동 설정">🔗</button>
+    <div id="syncStatus" style="font-size:11px;color:var(--sub);margin-top:2px;"></div>
+  </div>
+
+  <div class="top-tabs">
+    <div class="top-tab" id="tabMonth">📅 월별 캘린더</div>
+    <div class="top-tab" id="tabPeriod">🎯 목표기간 캘린더</div>
+  </div>
+
+  <div id="mainArea"></div>
+
+  <div class="footer-note">칸을 톡 누르면 귀여운 캐릭터 도장을 고르고 메모도 남길 수 있어요</div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h3 id="sheetDateLabel">기록하기</h3>
+      <button id="closeSheet">✕</button>
+    </div>
+    <div class="sticker-grid" id="stickerGrid"></div>
+    <textarea id="noteInput" class="note-input" maxlength="120" placeholder="오늘 잘한 일을 적어주세요 (예: 혼자 양치했어요)"></textarea>
+    <button class="save-btn" id="saveDayBtn">저장하기</button>
+    <button class="remove-btn" id="removeStampBtn">이 날짜 기록 지우기</button>
+  </div>
+</div>
+
+<div class="overlay" id="periodOverlay">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h3>목표기간 캘린더 만들기</h3>
+      <button id="closePeriodSheet">✕</button>
+    </div>
+    <div class="field-label">캘린더 이름</div>
+    <input class="field-input" id="periodName" maxlength="16" placeholder="예: 여름방학, 태권도 승급 준비">
+    <div class="field-row">
+      <div><div class="field-label">시작일</div><input class="field-input" id="periodStart" type="date"></div>
+      <div><div class="field-label">종료일</div><input class="field-input" id="periodEnd" type="date"></div>
+    </div>
+    <div class="field-label">목표 도장 개수</div>
+    <input class="field-input" id="periodGoal" type="number" min="1" max="365" value="10">
+    <div class="err-msg" id="periodErr"></div>
+    <button class="save-btn" id="savePeriodBtn">만들기</button>
+  </div>
+</div>
+
+<div class="overlay" id="bgOverlay">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h3>배경화면 설정</h3>
+      <button id="closeBgSheet">✕</button>
+    </div>
+    <div class="bg-preview" id="bgPreview">사진을 선택하면 미리 보여요</div>
+    <label class="file-btn">사진 선택하기<input type="file" accept="image/*" id="bgFileInput"></label>
+    <button class="remove-btn" id="clearBgBtn">배경화면 지우기 (기본 배경으로)</button>
+    <div class="err-msg" id="bgErr"></div>
+  </div>
+</div>
+
+<div class="overlay" id="ghOverlay">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h3>GitHub 연동 설정</h3>
+      <button id="closeGhSheet">✕</button>
+    </div>
+    <div class="period-info" style="text-align:left;line-height:1.5;margin-bottom:10px;">
+      가족과 데이터를 공유하려면 이 앱 전용 <b>비공개 저장소</b>를 새로 만들고,
+      그 저장소에만 쓸 수 있는 <b>개인 액세스 토큰(PAT)</b>을 발급해서 아래에 입력해주세요.
+      토큰은 이 기기 브라우저에만 저장되지만, 알고 있는 사람은 누구나 그 저장소에 쓸 수 있으니
+      가족 외에는 공유하지 마세요.
+    </div>
+    <div class="field-label">GitHub 사용자명 (owner)</div>
+    <input class="field-input" id="ghOwner" placeholder="예: jian-family">
+    <div class="field-label">저장소 이름 (repo)</div>
+    <input class="field-input" id="ghRepo" placeholder="예: jian-stamp-data">
+    <div class="field-row">
+      <div><div class="field-label">파일 경로</div><input class="field-input" id="ghPath" placeholder="stamp-data.json" value="stamp-data.json"></div>
+      <div><div class="field-label">브랜치</div><input class="field-input" id="ghBranch" placeholder="main" value="main"></div>
+    </div>
+    <div class="field-label">Personal Access Token</div>
+    <input class="field-input" id="ghToken" type="password" placeholder="ghp_로 시작하는 토큰">
+    <div class="err-msg" id="ghErr"></div>
+    <button class="save-btn" id="connectGhBtn">연결하기</button>
+    <button class="remove-btn" id="disconnectGhBtn">연결 해제 (이 기기 저장만 사용)</button>
+  </div>
+</div>
+
+<script>
+
+const STICKERS = [
+  {e:'🐻', name:'곰돌이', color:'#C99A6C'},{e:'🐰', name:'토끼', color:'#F2A6B4'},
+  {e:'🦊', name:'여우', color:'#F0A15A'},{e:'🐱', name:'고양이', color:'#F2C14E'},
+  {e:'🐶', name:'강아지', color:'#D9B48F'},{e:'🐼', name:'판다', color:'#8B8B8B'},
+  {e:'🦁', name:'사자', color:'#E8B33D'},{e:'🐨', name:'코알라', color:'#9BA8B5'},
+];
+
+let current = new Date(); current.setDate(1);
+let topTab = 'month'; // 'month' | 'period'
+let periodSub = 'list'; // 'list' | 'detail'
+let activePeriodId = null;
+let periods = [];
+let stampData = {};
+let periodStampData = {};
+let monthGoal = 20, yearGoal = 200, yearCount = 0;
+let selectedKey = null, pendingSticker = null;
+
+const mainArea = document.getElementById('mainArea');
+const overlay = document.getElementById('overlay');
+const stickerGrid = document.getElementById('stickerGrid');
+const sheetDateLabel = document.getElementById('sheetDateLabel');
+const noteInput = document.getElementById('noteInput');
+const periodOverlay = document.getElementById('periodOverlay');
+const bgOverlay = document.getElementById('bgOverlay');
+const bgPreview = document.getElementById('bgPreview');
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function monthKey(d){ return `stamps:${d.getFullYear()}-${pad(d.getMonth()+1)}`; }
+function goalKey(d){ return `goal:${d.getFullYear()}-${pad(d.getMonth()+1)}`; }
+function yearGoalKey(y){ return `yearGoal:${y}`; }
+function dateStr(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+
+/* ---------- 저장소 계층: localStorage 캐시 + (설정 시) GitHub 동기화 ---------- */
+let dbCache = {};
+let ghConfig = null;   // {owner, repo, path, branch, token}
+let ghSha = null;
+let ghPushTimer = null;
+
+function loadLocalDB(){
+  try{ const raw = localStorage.getItem('appDB'); dbCache = raw ? JSON.parse(raw) : {}; }
+  catch(e){ dbCache = {}; }
+}
+function persistLocalDB(){
+  try{ localStorage.setItem('appDB', JSON.stringify(dbCache)); }catch(e){ console.error('로컬 저장 실패', e); }
+}
+function loadGhConfig(){
+  try{ const raw = localStorage.getItem('ghConfig'); return raw ? JSON.parse(raw) : null; }catch(e){ return null; }
+}
+function saveGhConfigToStorage(cfg){ try{ localStorage.setItem('ghConfig', JSON.stringify(cfg)); }catch(e){} }
+function clearGhConfigFromStorage(){ try{ localStorage.removeItem('ghConfig'); }catch(e){} }
+
+function b64EncodeUnicode(str){
+  return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_,p)=>String.fromCharCode('0x'+p)));
+}
+function b64DecodeUnicode(str){
+  return decodeURIComponent(atob(str).split('').map(c=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+}
+
+function ghFileUrl(){
+  return `https://api.github.com/repos/${ghConfig.owner}/${ghConfig.repo}/contents/${encodeURIComponent(ghConfig.path)}`;
+}
+
+async function githubLoad(){
+  if(!ghConfig) return {ok:false};
+  try{
+    const res = await fetch(`${ghFileUrl()}?ref=${encodeURIComponent(ghConfig.branch||'main')}&_=${Date.now()}`, {
+      headers:{ 'Authorization':`token ${ghConfig.token}`, 'Accept':'application/vnd.github+json' }
+    });
+    if(res.status===404){ ghSha=null; return {ok:true, isNew:true}; }
+    if(!res.ok){ const d = await res.json().catch(()=>({})); return {ok:false, error: d.message || ('HTTP '+res.status)}; }
+    const data = await res.json();
+    ghSha = data.sha;
+    const decoded = b64DecodeUnicode(data.content.replace(/\n/g,''));
+    dbCache = JSON.parse(decoded);
+    persistLocalDB();
+    return {ok:true};
+  }catch(e){ return {ok:false, error: e.message || String(e)}; }
+}
+
+async function githubPush(){
+  if(!ghConfig) return;
+  try{
+    const body = {
+      message: '지안이 칭찬스티커 데이터 업데이트',
+      content: b64EncodeUnicode(JSON.stringify(dbCache)),
+      branch: ghConfig.branch || 'main'
+    };
+    if(ghSha) body.sha = ghSha;
+    const res = await fetch(ghFileUrl(), {
+      method:'PUT',
+      headers:{ 'Authorization':`token ${ghConfig.token}`, 'Accept':'application/vnd.github+json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.message || ('HTTP '+res.status));
+    ghSha = data.content.sha;
+    setSyncStatus('☁️ GitHub에 저장됨');
+  }catch(e){
+    console.error('GitHub 저장 실패', e);
+    showSaveError('⚠️ GitHub 저장에 실패했어요 (' + (e.message||'') + ')');
+    setSyncStatus('⚠️ GitHub 동기화 실패 — 이 기기에는 저장됨');
+  }
+}
+function queueGithubPush(){
+  clearTimeout(ghPushTimer);
+  setSyncStatus('☁️ 동기화 중...');
+  ghPushTimer = setTimeout(githubPush, 1000);
+}
+function setSyncStatus(text){
+  const el = document.getElementById('syncStatus');
+  if(el) el.textContent = ghConfig ? text : '';
+}
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function monthKey(d){ return `stamps:${d.getFullYear()}-${pad(d.getMonth()+1)}`; }
+function goalKey(d){ return `goal:${d.getFullYear()}-${pad(d.getMonth()+1)}`; }
+function yearGoalKey(y){ return `yearGoal:${y}`; }
+function dateStr(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+
+/* 앱 전체가 쓰는 저장 함수 — 항상 이 기기(localStorage)에는 즉시 저장되고,
+   GitHub 연동이 설정돼 있으면 잠시 후 GitHub 파일에도 동기화됩니다. */
+function safeGet(key){ return Object.prototype.hasOwnProperty.call(dbCache, key) ? dbCache[key] : null; }
+function safeSet(key,val){ dbCache[key]=val; persistLocalDB(); if(ghConfig) queueGithubPush(); return true; }
+function safeDelete(key){ delete dbCache[key]; persistLocalDB(); if(ghConfig) queueGithubPush(); }
+
+function showSaveError(msg){
+  let banner = document.getElementById('saveErrorBanner');
+  if(!banner){
+    banner = document.createElement('div');
+    banner.id = 'saveErrorBanner';
+    banner.style.cssText = 'position:fixed;left:12px;right:12px;bottom:14px;max-width:456px;margin:0 auto;background:#FFE5E0;color:#B8483A;border:1.5px solid #F0B4A8;border-radius:14px;padding:12px 14px;font-size:13px;text-align:center;z-index:999;box-shadow:0 4px 14px rgba(0,0,0,0.12);';
+    document.body.appendChild(banner);
+  }
+  banner.textContent = msg || '⚠️ 저장에 실패했어요. 잠시 후 다시 시도해주세요.';
+  banner.style.display = 'block';
+  clearTimeout(banner._hideTimer);
+  banner._hideTimer = setTimeout(()=>{ banner.style.display='none'; }, 5000);
+}
+
+/* ---------- GitHub 연동 설정 UI ---------- */
+const ghOverlay = document.getElementById('ghOverlay');
+document.getElementById('ghSettingsBtn').addEventListener('click', ()=>{
+  if(ghConfig){
+    document.getElementById('ghOwner').value = ghConfig.owner;
+    document.getElementById('ghRepo').value = ghConfig.repo;
+    document.getElementById('ghPath').value = ghConfig.path;
+    document.getElementById('ghBranch').value = ghConfig.branch;
+    document.getElementById('ghToken').value = ghConfig.token;
+  }
+  document.getElementById('ghErr').textContent = '';
+  ghOverlay.classList.add('show');
+});
+document.getElementById('closeGhSheet').addEventListener('click', ()=> ghOverlay.classList.remove('show'));
+ghOverlay.addEventListener('click', e=>{ if(e.target===ghOverlay) ghOverlay.classList.remove('show'); });
+
+document.getElementById('connectGhBtn').addEventListener('click', async ()=>{
+  const owner = document.getElementById('ghOwner').value.trim();
+  const repo = document.getElementById('ghRepo').value.trim();
+  const path = document.getElementById('ghPath').value.trim() || 'stamp-data.json';
+  const branch = document.getElementById('ghBranch').value.trim() || 'main';
+  const token = document.getElementById('ghToken').value.trim();
+  const err = document.getElementById('ghErr');
+  err.textContent = '';
+  if(!owner || !repo || !token){ err.textContent = '사용자명, 저장소, 토큰을 모두 입력해주세요.'; return; }
+
+  const btn = document.getElementById('connectGhBtn');
+  const originalText = btn.textContent;
+  btn.textContent = '연결 확인 중...';
+  btn.disabled = true;
+
+  const testConfig = {owner, repo, path, branch, token};
+  const prevConfig = ghConfig, prevSha = ghSha, prevDb = JSON.stringify(dbCache);
+  ghConfig = testConfig;
+  const result = await githubLoad();
+  btn.textContent = originalText;
+  btn.disabled = false;
+
+  if(!result.ok){
+    err.textContent = '연결 실패: ' + (result.error || '저장소나 토큰을 확인해주세요.');
+    ghConfig = prevConfig; ghSha = prevSha; dbCache = JSON.parse(prevDb);
+    return;
+  }
+  // 새 파일이면 지금까지의 로컬 데이터를 그대로 올려서 초기화
+  saveGhConfigToStorage(testConfig);
+  ghOverlay.classList.remove('show');
+  if(result.isNew){ await githubPush(); }
+  setSyncStatus('☁️ GitHub 연동됨');
+  await loadMonth();
+});
+
+document.getElementById('disconnectGhBtn').addEventListener('click', ()=>{
+  ghConfig = null; ghSha = null;
+  clearGhConfigFromStorage();
+  setSyncStatus('');
+  ghOverlay.classList.remove('show');
+});
+
+
+
+/* ---------- 배경화면 ---------- */
+async function loadBg(){
+  const raw = await safeGet('settings:bgImage');
+  if(raw){
+    document.getElementById('bgLayer').style.backgroundImage = `url(${raw})`;
+    document.body.classList.add('has-bg');
+    bgPreview.style.backgroundImage = `url(${raw})`;
+    bgPreview.textContent = '';
+  }
+}
+document.getElementById('bgSettingsBtn').addEventListener('click', ()=> bgOverlay.classList.add('show'));
+document.getElementById('closeBgSheet').addEventListener('click', ()=> bgOverlay.classList.remove('show'));
+bgOverlay.addEventListener('click', e=>{ if(e.target===bgOverlay) bgOverlay.classList.remove('show'); });
+
+document.getElementById('bgFileInput').addEventListener('change', function(e){
+  const file = e.target.files[0];
+  const err = document.getElementById('bgErr');
+  err.textContent = '';
+  if(!file) return;
+  if(!file.type.startsWith('image/')){ err.textContent='이미지 파일만 선택할 수 있어요.'; return; }
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    const img = new Image();
+    img.onload = async function(){
+      const maxDim = 900;
+      let w = img.width, h = img.height;
+      if(w > maxDim || h > maxDim){
+        if(w > h){ h = Math.round(h * maxDim/w); w = maxDim; }
+        else { w = Math.round(w * maxDim/h); h = maxDim; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      if(dataUrl.length > 1.8*1024*1024){ err.textContent='이미지 용량이 너무 커요. 다른 사진을 선택해주세요.'; return; }
+      await safeSet('settings:bgImage', dataUrl);
+      document.getElementById('bgLayer').style.backgroundImage = `url(${dataUrl})`;
+      document.body.classList.add('has-bg');
+      bgPreview.style.backgroundImage = `url(${dataUrl})`;
+      bgPreview.textContent = '';
+    };
+    img.onerror = ()=>{ err.textContent='이미지를 불러오지 못했어요.'; };
+    img.src = ev.target.result;
+  };
+  reader.onerror = ()=>{ err.textContent='파일을 읽지 못했어요.'; };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('clearBgBtn').addEventListener('click', async ()=>{
+  await safeDelete('settings:bgImage');
+  document.getElementById('bgLayer').style.backgroundImage = '';
+  document.body.classList.remove('has-bg');
+  bgPreview.style.backgroundImage = '';
+  bgPreview.textContent = '사진을 선택하면 미리 보여요';
+});
+
+/* ---------- 데이터 로드 ---------- */
+async function loadPeriods(){
+  const raw = await safeGet('periods:list');
+  periods = raw ? JSON.parse(raw) : [];
+}
+async function loadYearGoalAndCount(){
+  const y = current.getFullYear();
+  const raw = await safeGet(`yearStats:${y}`);
+  const stats = raw ? JSON.parse(raw) : { goal: 200, counts: {} };
+  yearGoal = stats.goal || 200;
+  yearCount = Object.values(stats.counts || {}).reduce((a,b)=>a+b, 0);
+}
+async function updateYearStatsForMonth(){
+  const y = current.getFullYear(), mm = pad(current.getMonth()+1);
+  const raw = await safeGet(`yearStats:${y}`);
+  const stats = raw ? JSON.parse(raw) : { goal: 200, counts: {} };
+  stats.counts[mm] = Object.values(stampData).filter(x=>x && x.e).length;
+  await safeSet(`yearStats:${y}`, JSON.stringify(stats));
+  yearGoal = stats.goal || 200;
+  yearCount = Object.values(stats.counts).reduce((a,b)=>a+b, 0);
+}
+async function loadMonth(){
+  stampData = {}; monthGoal = 20;
+  const raw = await safeGet(monthKey(current));
+  if(raw) stampData = JSON.parse(raw);
+  const g = await safeGet(goalKey(current));
+  if(g) monthGoal = parseInt(g) || 20;
+  await loadYearGoalAndCount();
+  renderAll();
+}
+async function loadPeriodData(id){
+  periodStampData = {};
+  const raw = await safeGet(`periodStamps:${id}`);
+  if(raw) periodStampData = JSON.parse(raw);
+  renderAll();
+}
+async function saveMonth(){ await safeSet(monthKey(current), JSON.stringify(stampData)); await updateYearStatsForMonth(); }
+async function saveMonthGoal(val){ monthGoal = val; await safeSet(goalKey(current), String(val)); }
+async function saveYearGoal(val){
+  const y = current.getFullYear();
+  const raw = await safeGet(`yearStats:${y}`);
+  const stats = raw ? JSON.parse(raw) : { goal: 200, counts: {} };
+  stats.goal = val;
+  await safeSet(`yearStats:${y}`, JSON.stringify(stats));
+  yearGoal = val;
+}
+async function savePeriodStamps(id){
+  await safeSet(`periodStamps:${id}`, JSON.stringify(periodStampData));
+  const p = periods.find(x=>x.id===id);
+  if(p){ p.count = Object.values(periodStampData).filter(x=>x && x.e).length; await savePeriodsList(); }
+}
+async function savePeriodsList(){ await safeSet('periods:list', JSON.stringify(periods)); }
+
+/* ---------- 탭 ---------- */
+document.getElementById('tabMonth').addEventListener('click', ()=>{ topTab='month'; loadMonth(); });
+document.getElementById('tabPeriod').addEventListener('click', async ()=>{
+  topTab='period'; periodSub='list';
+  await loadPeriods();
+  renderAll();
+});
+
+function renderTabs(){
+  document.getElementById('tabMonth').classList.toggle('active', topTab==='month');
+  document.getElementById('tabPeriod').classList.toggle('active', topTab==='period');
+}
+
+/* ---------- 렌더 ---------- */
+function renderAll(){
+  renderTabs();
+  if(topTab==='month') renderMonthView();
+  else if(periodSub==='list') renderPeriodList();
+  else renderPeriodDetail();
+}
+
+function progressMsgText(count, goal, label){
+  const pct = goal>0 ? count/goal : 0;
+  if(count===0) return `${label} 도장을 모아볼까요?`;
+  if(pct<0.3) return `${label} 좋은 시작이에요! 👏`;
+  if(pct<0.7) return `${label} 점점 늘고 있어요! 🙌`;
+  if(pct<1) return `${label} 조금만 더 힘내요! 🔥`;
+  return `${label} 목표 달성! 최고예요 🎉`;
+}
+function progressBlock(id, titleText, count, goal, msg){
+  return `
+    <div class="progress-block">
+      <div class="progress-label">${titleText}</div>
+      <div class="progress-msg">${msg}</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100,Math.round((count/goal)*100))}%"></div></div>
+      <div class="goal-row">
+        <span>${count}개</span>
+        <span>목표 <input data-goal-id="${id}" type="number" min="1" max="500" value="${goal}"/>개</span>
+      </div>
+    </div>`;
+}
+
+function renderMonthView(){
+  const y = current.getFullYear(), m = current.getMonth();
+  const monthCount = Object.values(stampData).filter(v=>v && v.e).length;
+
+  mainArea.innerHTML = `
+    <div class="card">
+      <div class="month-nav">
+        <button id="prevBtn">‹</button>
+        <h2>${y}년 ${m+1}월</h2>
+        <button id="nextBtn">›</button>
+      </div>
+      ${progressBlock('month','🗓️ 이번 달 목표', monthCount, monthGoal, progressMsgText(monthCount, monthGoal, '지안이'))}
+      ${progressBlock('year','🏆 '+y+'년 연간 목표', yearCount, yearGoal, progressMsgText(yearCount, yearGoal, '올해'))}
+      <div class="weekdays"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
+      <div class="grid" id="grid"></div>
+    </div>`;
+
+  document.getElementById('prevBtn').onclick = ()=>{ current.setMonth(current.getMonth()-1); loadMonth(); };
+  document.getElementById('nextBtn').onclick = ()=>{ current.setMonth(current.getMonth()+1); loadMonth(); };
+  mainArea.querySelector('[data-goal-id="month"]').addEventListener('change', e=> saveMonthGoal(parseInt(e.target.value)||20).then(renderMonthView));
+  mainArea.querySelector('[data-goal-id="year"]').addEventListener('change', e=> saveYearGoal(parseInt(e.target.value)||200).then(renderMonthView));
+
+  const grid = document.getElementById('grid');
+  const firstDay = new Date(y,m,1).getDay();
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const today = new Date();
+  const isThisMonth = today.getFullYear()===y && today.getMonth()===m;
+
+  for(let i=0;i<firstDay;i++){ const d=document.createElement('div'); d.className='cell empty'; grid.appendChild(d); }
+  for(let day=1; day<=daysInMonth; day++){
+    const dow = (firstDay+day-1)%7;
+    const cell = document.createElement('div');
+    cell.className = 'cell'+(dow===0?' sun':'')+(dow===6?' sat':'')+(isThisMonth && today.getDate()===day?' today':'');
+    cell.dataset.key = day;
+    cell.innerHTML = `<div class="daynum">${day}</div>`;
+    const entry = stampData[day];
+    if(entry && entry.e) cell.innerHTML += `<div class="stamp"><div class="ring" style="color:${entry.color}"></div><div class="badge">${entry.e}</div></div>`;
+    if(entry && entry.note) cell.innerHTML += `<div class="note-dot"></div>`;
+    cell.addEventListener('click', ()=> openDaySheet(day, entry));
+    grid.appendChild(cell);
+  }
+}
+
+function renderPeriodList(){
+  let cardsHtml = '';
+  if(periods.length===0){
+    cardsHtml = `<div class="empty-msg">아직 만든 목표기간이 없어요.<br>아래에서 새로 만들어보세요!</div>`;
+  } else {
+    cardsHtml = periods.map(p=>{
+      const count = p.count || 0;
+      const pct = Math.min(100, Math.round((count/p.goal)*100));
+      return `
+        <div class="period-card" data-id="${p.id}">
+          <div class="period-card-head">
+            <strong>🎯 ${p.name}</strong>
+            <span>${p.start} ~ ${p.end}</span>
+          </div>
+          <div class="mini-bar"><div class="mini-fill" style="width:${pct}%"></div></div>
+          <div class="mini-count">${count} / ${p.goal}개</div>
+        </div>`;
+    }).join('');
+  }
+  mainArea.innerHTML = `
+    <div class="card">
+      <div class="month-nav"><h2>🎯 목표기간 캘린더</h2></div>
+      ${cardsHtml}
+      <button class="add-period-btn" id="addPeriodBtn">+ 새 목표기간 만들기</button>
+    </div>`;
+  mainArea.querySelectorAll('.period-card').forEach(card=>{
+    card.addEventListener('click', async ()=>{
+      activePeriodId = card.dataset.id; periodSub='detail';
+      await loadPeriodData(activePeriodId);
+    });
+  });
+  document.getElementById('addPeriodBtn').addEventListener('click', openPeriodCreate);
+}
+
+function renderPeriodDetail(){
+  const p = periods.find(x=>x.id===activePeriodId);
+  if(!p){ periodSub='list'; renderAll(); return; }
+  const start = new Date(p.start+'T00:00:00');
+  const end = new Date(p.end+'T00:00:00');
+  const count = Object.values(periodStampData).filter(v=>v && v.e).length;
+  const spansMultipleMonths = start.getFullYear()!==end.getFullYear() || start.getMonth()!==end.getMonth();
+
+  mainArea.innerHTML = `
+    <div class="card">
+      <div class="month-nav">
+        <button class="back" id="backToListBtn">← 목록</button>
+        <h2>🎯 ${p.name}</h2>
+        <button class="del" id="delPeriodBtn">삭제</button>
+      </div>
+      <div class="period-info">${p.start} ~ ${p.end}</div>
+      ${progressBlock('period','🎯 기간 목표', count, p.goal, progressMsgText(count, p.goal, '지안이'))}
+      <div class="weekdays"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
+      <div class="grid" id="grid"></div>
+    </div>`;
+
+  document.getElementById('backToListBtn').addEventListener('click', async ()=>{
+    periodSub='list'; renderAll();
+  });
+  mainArea.querySelector('[data-goal-id="period"]').addEventListener('change', e=>{
+    p.goal = parseInt(e.target.value)||10;
+    savePeriodsList().then(renderPeriodDetail);
+  });
+
+  let delConfirming = false;
+  document.getElementById('delPeriodBtn').addEventListener('click', function(){
+    if(!delConfirming){
+      delConfirming = true; this.textContent='정말 삭제?';
+      setTimeout(()=>{ delConfirming=false; this.textContent='삭제'; }, 2500);
+      return;
+    }
+    periods = periods.filter(x=>x.id!==p.id);
+    savePeriodsList().then(()=>{ periodSub='list'; renderAll(); });
+  });
+
+  const grid = document.getElementById('grid');
+  const firstDow = start.getDay();
+  for(let i=0;i<firstDow;i++){ const d=document.createElement('div'); d.className='cell empty'; grid.appendChild(d); }
+
+  const today = new Date();
+  let d = new Date(start);
+  while(d <= end){
+    const ds = dateStr(d);
+    const dow = d.getDay();
+    const cell = document.createElement('div');
+    const isToday = dateStr(today)===ds;
+    cell.className = 'cell'+(dow===0?' sun':'')+(dow===6?' sat':'')+(isToday?' today':'');
+    cell.dataset.key = ds;
+    const label = spansMultipleMonths ? `${d.getMonth()+1}/${d.getDate()}` : `${d.getDate()}`;
+    cell.innerHTML = `<div class="daynum">${label}</div>`;
+    const entry = periodStampData[ds];
+    if(entry && entry.e) cell.innerHTML += `<div class="stamp"><div class="ring" style="color:${entry.color}"></div><div class="badge">${entry.e}</div></div>`;
+    if(entry && entry.note) cell.innerHTML += `<div class="note-dot"></div>`;
+    cell.addEventListener('click', ()=> openDaySheet(ds, entry));
+    grid.appendChild(cell);
+    d.setDate(d.getDate()+1);
+  }
+}
+
+/* ---------- 도장/메모 시트 ---------- */
+function openDaySheet(key, entry){
+  selectedKey = key;
+  pendingSticker = entry && entry.e ? {e:entry.e, color:entry.color} : null;
+  noteInput.value = entry && entry.note ? entry.note : '';
+  if(topTab==='month'){
+    const y = current.getFullYear(), m = current.getMonth()+1;
+    sheetDateLabel.textContent = `${m}월 ${key}일 기록하기`;
+  } else {
+    sheetDateLabel.textContent = `${key} 기록하기`;
+  }
+  highlightSelectedSticker();
+  overlay.classList.add('show');
+}
+function closeSheet(){ overlay.classList.remove('show'); selectedKey=null; pendingSticker=null; }
+function highlightSelectedSticker(){
+  [...stickerGrid.children].forEach(btn=>{
+    btn.classList.toggle('selected', pendingSticker && btn.textContent===pendingSticker.e);
+  });
+}
+function buildStickerGrid(){
+  stickerGrid.innerHTML='';
+  STICKERS.forEach(s=>{
+    const b = document.createElement('div');
+    b.className='sticker-btn'; b.textContent=s.e; b.style.borderColor=s.color+'55';
+    b.addEventListener('click', ()=>{
+      pendingSticker = (pendingSticker && pendingSticker.e===s.e) ? null : {e:s.e, color:s.color};
+      highlightSelectedSticker();
+    });
+    stickerGrid.appendChild(b);
+  });
+}
+async function saveDay(){
+  if(selectedKey==null) return;
+  const note = noteInput.value.trim();
+  const store = topTab==='month' ? stampData : periodStampData;
+  if(!pendingSticker && !note) delete store[selectedKey];
+  else store[selectedKey] = { e: pendingSticker?pendingSticker.e:null, color: pendingSticker?pendingSticker.color:null, note };
+
+  if(topTab==='month'){ await saveMonth(); await loadYearGoalAndCount(); }
+  else { await savePeriodStamps(activePeriodId); }
+
+  const stickerToAnimate = pendingSticker;
+  closeSheet();
+  renderAll();
+  if(stickerToAnimate) burstConfetti(stickerToAnimate.color);
+}
+document.getElementById('saveDayBtn').addEventListener('click', saveDay);
+document.getElementById('removeStampBtn').addEventListener('click', async ()=>{
+  if(selectedKey==null) return;
+  const store = topTab==='month' ? stampData : periodStampData;
+  delete store[selectedKey];
+  if(topTab==='month'){ await saveMonth(); await loadYearGoalAndCount(); }
+  else { await savePeriodStamps(activePeriodId); }
+  closeSheet();
+  renderAll();
+});
+document.getElementById('closeSheet').addEventListener('click', closeSheet);
+overlay.addEventListener('click', e=>{ if(e.target===overlay) closeSheet(); });
+
+/* ---------- 목표기간 생성 ---------- */
+function openPeriodCreate(){
+  document.getElementById('periodName').value='';
+  document.getElementById('periodStart').value='';
+  document.getElementById('periodEnd').value='';
+  document.getElementById('periodGoal').value=10;
+  document.getElementById('periodErr').textContent='';
+  periodOverlay.classList.add('show');
+}
+document.getElementById('closePeriodSheet').addEventListener('click', ()=> periodOverlay.classList.remove('show'));
+periodOverlay.addEventListener('click', e=>{ if(e.target===periodOverlay) periodOverlay.classList.remove('show'); });
+document.getElementById('savePeriodBtn').addEventListener('click', async ()=>{
+  const name = document.getElementById('periodName').value.trim();
+  const start = document.getElementById('periodStart').value;
+  const end = document.getElementById('periodEnd').value;
+  const goal = parseInt(document.getElementById('periodGoal').value)||10;
+  const err = document.getElementById('periodErr');
+  if(!name){ err.textContent='캘린더 이름을 입력해주세요.'; return; }
+  if(!start || !end){ err.textContent='시작일과 종료일을 선택해주세요.'; return; }
+  if(start > end){ err.textContent='종료일은 시작일보다 뒤여야 해요.'; return; }
+  const id = Date.now().toString(36);
+  periods.push({id, name, start, end, goal});
+  await savePeriodsList();
+  periodOverlay.classList.remove('show');
+  activePeriodId = id; periodSub='detail';
+  await loadPeriodData(id);
+});
+
+function burstConfetti(color){
+  const colors=[color,'#FFD166','#8067DC','#7FD1C0'];
+  for(let i=0;i<14;i++){
+    const c=document.createElement('div'); c.className='confetti'; c.style.background=colors[i%colors.length];
+    const x=window.innerWidth/2+(Math.random()*60-30), y=window.innerHeight/2+(Math.random()*60-30);
+    c.style.left=x+'px'; c.style.top=y+'px'; document.body.appendChild(c);
+    const angle=Math.random()*Math.PI*2, dist=60+Math.random()*90;
+    const dx=Math.cos(angle)*dist, dy=Math.sin(angle)*dist-40;
+    c.animate([
+      {transform:'translate(0,0) rotate(0deg)', opacity:1},
+      {transform:`translate(${dx}px, ${dy+120}px) rotate(${Math.random()*360}deg)`, opacity:0}
+    ], {duration:700+Math.random()*300, easing:'cubic-bezier(.2,.8,.3,1)'});
+    setTimeout(()=>c.remove(),1100);
+  }
+}
+
+async function init(){
+  buildStickerGrid();
+  loadLocalDB();
+  ghConfig = loadGhConfig();
+  if(ghConfig){
+    setSyncStatus('☁️ GitHub에서 불러오는 중...');
+    const result = await githubLoad();
+    if(result.ok){ setSyncStatus('☁️ GitHub 연동됨'); }
+    else { setSyncStatus('⚠️ GitHub 연결 실패 — 이 기기 저장 데이터로 표시 중'); }
+  }
+  await loadBg();
+  await loadMonth();
+}
+init();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
