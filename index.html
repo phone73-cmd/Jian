@@ -460,12 +460,22 @@ async function connectRealtime(){
     sbClient = createClient(sbConfig.url, sbConfig.key);
     sbChannel = sbClient.channel('app_data_changes')
       .on('postgres_changes', { event:'*', schema:'public', table:'app_data', filter:`app_id=eq.${sbConfig.appId}` }, handleRemoteChange)
-      .subscribe();
+      .subscribe((status, err)=>{
+        console.log('[realtime]', status, err || '');
+        if(status==='SUBSCRIBED') setSyncStatus('☁️ Supabase 연동됨 (실시간 연결됨)');
+        else if(status==='CHANNEL_ERROR' || status==='TIMED_OUT' || status==='CLOSED'){
+          setSyncStatus('⚠️ 실시간 연결 끊김 — 곧 자동으로 재연결해요');
+        }
+      });
   }catch(e){ console.error('실시간 연결 실패', e); }
 }
 function disconnectRealtime(){
   if(sbClient && sbChannel) sbClient.removeChannel(sbChannel);
   sbClient = null; sbChannel = null;
+}
+function reconnectRealtime(){
+  disconnectRealtime();
+  connectRealtime();
 }
 function handleRemoteChange(payload){
   const row = payload.eventType==='DELETE' ? payload.old : payload.new;
@@ -968,6 +978,24 @@ function burstConfetti(color){
     setTimeout(()=>c.remove(),1100);
   }
 }
+
+/* ---------- 앱 복귀 시 재연결: 모바일에서 화면을 끄거나 백그라운드로 보내면
+   Realtime 웹소켓 연결이 끊기고 자동으로는 안 붙는 경우가 있어, 화면이
+   다시 보이거나 네트워크가 돌아오면 데이터도 새로 받고 연결도 다시 맺는다. ---------- */
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState==='visible' && sbConfig){
+    console.log('[realtime] 화면 복귀 — 새로고침 + 재연결');
+    refreshData();
+    reconnectRealtime();
+  }
+});
+window.addEventListener('online', ()=>{
+  if(sbConfig){
+    console.log('[realtime] 네트워크 복귀 — 새로고침 + 재연결');
+    refreshData();
+    reconnectRealtime();
+  }
+});
 
 /* ---------- 당겨서 새로고침 ---------- */
 const pullIndicator = document.getElementById('pullIndicator');
