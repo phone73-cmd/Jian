@@ -1,7 +1,7 @@
 {
   "name": "지안이 칭찬스티커",
   "short_name": "칭찬스티커",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "지안이의 칭찬 도장을 찍고 목표를 관리하는 캘린더",
   "start_url": "./index.html",
   "scope": "./",
