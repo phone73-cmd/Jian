@@ -1,0 +1,36 @@
+name: Bump version
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  bump-version:
+    if: github.event.head_commit.author.name != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Bump patch version
+        id: bump
+        run: |
+          OLD_VERSION=$(grep -o '"version": *"[0-9]*\.[0-9]*\.[0-9]*"' manifest.json | grep -o '[0-9]*\.[0-9]*\.[0-9]*')
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$OLD_VERSION"
+          NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+          echo "old=$OLD_VERSION" >> "$GITHUB_OUTPUT"
+          echo "new=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          sed -i "s/$OLD_VERSION/$NEW_VERSION/g" index.html manifest.json sw.js
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html manifest.json sw.js
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: bump version to v${{ steps.bump.outputs.new }} [skip ci]"
+          git push
