@@ -401,8 +401,9 @@ function stampCount(jsonStr){
 async function supabaseLoadAll(){
   if(!sbConfig) return {ok:false};
   try{
-    const res = await fetch(sbRestUrl(`app_data?app_id=eq.${encodeURIComponent(sbConfig.appId)}&select=key,value,updated_at`), {
-      headers: sbHeaders()
+    const res = await fetch(sbRestUrl(`app_data?app_id=eq.${encodeURIComponent(sbConfig.appId)}&select=key,value,updated_at&_=${Date.now()}`), {
+      headers: sbHeaders(),
+      cache: 'no-store'
     });
     if(!res.ok){ const d = await res.json().catch(()=>({})); return {ok:false, error: d.message || ('HTTP '+res.status)}; }
     const rows = await res.json();
