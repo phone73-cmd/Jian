@@ -412,7 +412,7 @@ async function supabaseLoadAll(){
 async function supabaseUpsert(key, value){
   if(!sbConfig) return;
   try{
-    const res = await fetch(sbRestUrl('app_data'), {
+    const res = await fetch(sbRestUrl('app_data?on_conflict=app_id,key'), {
       method:'POST',
       headers:{ ...sbHeaders(), 'Prefer':'resolution=merge-duplicates,return=minimal' },
       body: JSON.stringify([{ app_id: sbConfig.appId, key, value, updated_at: new Date().toISOString() }])
