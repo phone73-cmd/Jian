@@ -35,7 +35,11 @@
     min-height:100vh; font-family:'Gowun Dodum','Noto Sans KR',sans-serif; color:var(--ink);
     display:flex; justify-content:center; padding:20px 12px 60px;
   }
-  .app{ width:100%; max-width:480px; }
+  .app{ width:100%; max-width:480px; animation: appLoadIn .5s ease both; }
+  @keyframes appLoadIn{ from{ opacity:0; transform:translateY(14px); } to{ opacity:1; transform:translateY(0); } }
+  @keyframes fadeSlideIn{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:translateY(0); } }
+  @keyframes slideInLeft{ from{ opacity:0; transform:translateX(26px); } to{ opacity:1; transform:translateX(0); } }
+  @keyframes slideInRight{ from{ opacity:0; transform:translateX(-26px); } to{ opacity:1; transform:translateX(0); } }
   .title-row{ text-align:center; margin-bottom:14px; position:relative; }
   .title-row h1{ font-family:'Jua',sans-serif; font-weight:400; font-size:26px; color:var(--grape); margin:0 0 2px; letter-spacing:-0.5px; }
   .title-row p{ margin:0; font-size:13px; color:var(--sub); }
@@ -48,7 +52,9 @@
   .top-tab{
     flex:1; text-align:center; padding:11px 6px; border-radius:16px; background:#F0EBDC;
     color:var(--sub); font-weight:700; font-size:14px; cursor:pointer; border:2px solid transparent;
+    transition: background-color .2s ease, color .2s ease, transform .12s ease;
   }
+  .top-tab:active{ transform:scale(0.96); }
   .top-tab.active{ background:var(--grape); color:#fff; }
 
   .card{
@@ -59,9 +65,9 @@
   .month-nav button{
     width:36px;height:36px; border-radius:50%; border:none; background:var(--yellow);
     font-family:'Jua',sans-serif; font-size:16px; color:var(--ink); cursor:pointer; box-shadow:0 3px 0 rgba(0,0,0,0.08);
-    flex:0 0 auto;
+    flex:0 0 auto; transition: transform .12s ease, box-shadow .12s ease;
   }
-  .month-nav button:active{ transform:translateY(2px); box-shadow:none; }
+  .month-nav button:active{ transform:translateY(2px) scale(0.96); box-shadow:none; }
   .month-nav h2{ font-family:'Jua',sans-serif; font-weight:400; font-size:19px; margin:0; color:var(--ink); flex:1; text-align:center; }
   .month-nav .del{ background:#FBE3DD; color:var(--coral); font-size:12px; width:auto; padding:0 10px; border-radius:12px; }
   .month-nav .back{ background:#EEF0FB; color:var(--grape); font-size:13px; width:auto; padding:0 12px; border-radius:12px; }
@@ -70,7 +76,9 @@
   .progress-label{ font-size:12px; color:var(--grape); font-weight:700; margin-bottom:4px; }
   .progress-msg{ font-size:13px; color:var(--grape); margin-bottom:6px; font-weight:600; text-align:center; }
   .progress-bar{ height:12px; background:#F0EBDC; border-radius:8px; overflow:hidden; position:relative; }
-  .progress-fill{ height:100%; background:linear-gradient(90deg,var(--coral),var(--yellow)); border-radius:8px; transition:width .5s ease; }
+  .progress-fill{ height:100%; background:linear-gradient(90deg,var(--coral),var(--yellow)); border-radius:8px; transition:width .6s cubic-bezier(.2,.8,.3,1); }
+  @keyframes glowPulse{ 0%,100%{ box-shadow:0 0 6px 1px rgba(255,209,102,0.55); } 50%{ box-shadow:0 0 14px 4px rgba(255,140,122,0.85); } }
+  .progress-fill.complete{ animation: glowPulse 1.4s ease-in-out infinite; }
   .goal-row{ display:flex; justify-content:space-between; font-size:11px; color:var(--sub); margin-top:4px; }
   .goal-row input{ width:38px; border:none; border-bottom:1px solid var(--sub); background:transparent; text-align:center; font-size:11px; color:var(--sub); }
 
@@ -92,22 +100,25 @@
   .cell.sun .daynum{ color:#E8877A; }
   .cell.sat .daynum{ color:#8B7FD1; }
   .stamp{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; }
-  .stamp .badge{ font-size:30px; filter: drop-shadow(0 2px 1px rgba(0,0,0,0.15)); transform-origin:center; }
+  .stamp .badge{ font-size:30px; filter: drop-shadow(0 2px 1px rgba(0,0,0,0.15)); transform-origin:center; display:inline-block; }
   @keyframes stampDown{
-    0%{ transform:scale(2.6) rotate(var(--rot)); opacity:0; }
-    55%{ transform:scale(0.85) rotate(var(--rot)); opacity:1; }
-    75%{ transform:scale(1.12) rotate(var(--rot)); }
-    100%{ transform:scale(1) rotate(var(--rot)); opacity:1; }
+    0%{ transform:scale(2.6) rotate(var(--rot,0deg)); opacity:0; }
+    50%{ transform:scale(0.8) rotate(calc(var(--rot,0deg) - 8deg)); opacity:1; }
+    68%{ transform:scale(1.16) rotate(calc(var(--rot,0deg) + 5deg)); }
+    84%{ transform:scale(0.95) rotate(calc(var(--rot,0deg) - 2deg)); }
+    100%{ transform:scale(1) rotate(var(--rot,0deg)); opacity:1; }
   }
-  .stamp.pop .badge{ animation: stampDown .38s cubic-bezier(.2,1.4,.4,1) both; }
+  .stamp.pop .badge{ animation: stampDown .48s cubic-bezier(.2,1.4,.4,1) both; }
   .ring{ position:absolute; inset:0; border-radius:50%; border:3px solid currentColor; opacity:0; }
-  @keyframes ringPulse{ 0%{ transform:scale(0.4); opacity:.55; } 100%{ transform:scale(1.5); opacity:0; } }
-  .stamp.pop .ring{ animation: ringPulse .45s ease-out both; }
+  @keyframes ringPulse{ 0%{ transform:scale(0.4); opacity:.55; } 100%{ transform:scale(1.6); opacity:0; } }
+  .stamp.pop .ring{ animation: ringPulse .5s ease-out both; }
   .note-dot{ position:absolute; bottom:4px; right:5px; width:6px;height:6px; border-radius:50%; background:var(--mint); z-index:3; }
 
   .period-card{
     background:#FBF8EE; border:1.5px solid var(--line); border-radius:18px; padding:14px; margin-bottom:10px; cursor:pointer;
+    transition: transform .12s ease, box-shadow .12s ease;
   }
+  .period-card:active{ transform:scale(0.98); }
   .period-card-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
   .period-card-head strong{ font-family:'Jua',sans-serif; font-weight:400; font-size:15px; color:var(--ink); }
   .period-card-head span{ font-size:11px; color:var(--sub); }
@@ -116,8 +127,9 @@
   .mini-count{ font-size:11px; color:var(--sub); margin-top:4px; text-align:right; }
   .add-period-btn{
     width:100%; padding:13px; border-radius:16px; border:2px dashed var(--sub); background:transparent;
-    color:var(--sub); font-family:'Jua',sans-serif; font-size:14px; cursor:pointer;
+    color:var(--sub); font-family:'Jua',sans-serif; font-size:14px; cursor:pointer; transition: transform .12s ease;
   }
+  .add-period-btn:active{ transform:scale(0.97); }
   .empty-msg{ text-align:center; font-size:13px; color:var(--sub); padding:14px 0; }
 
   .overlay{
@@ -128,7 +140,7 @@
   .overlay.show{ opacity:1; pointer-events:auto; }
   .sheet{
     width:100%; max-width:480px; background:var(--paper); border-radius:26px 26px 0 0;
-    padding:18px 18px 26px; transform:translateY(30px); transition:transform .25s cubic-bezier(.2,1,.4,1);
+    padding:18px 18px 26px; transform:translateY(30px); transition:transform .32s cubic-bezier(.34,1.45,.64,1);
     box-shadow:0 -6px 24px rgba(0,0,0,0.15); max-height:85vh; overflow-y:auto;
   }
   .overlay.show .sheet{ transform:translateY(0); }
@@ -159,8 +171,9 @@
   .save-btn{
     width:100%; padding:11px; border-radius:14px; border:none; background:var(--grape); color:#fff;
     font-family:'Jua',sans-serif; font-size:14px; cursor:pointer; margin-bottom:8px; margin-top:6px;
+    transition: transform .12s ease;
   }
-  .save-btn:active{ transform:translateY(1px); }
+  .save-btn:active{ transform:translateY(1px) scale(0.98); }
   .remove-btn{
     width:100%; padding:10px; border-radius:14px; border:1.5px dashed var(--sub); background:transparent;
     color:var(--sub); font-family:'Gowun Dodum',sans-serif; font-size:13px; cursor:pointer;
@@ -293,6 +306,38 @@ let stampData = {};
 let periodStampData = {};
 let monthGoal = 20, yearGoal = 200, yearCount = 0;
 let selectedKey = null, pendingSticker = null;
+let navDirection = null; // 'left' | 'right' | null — set right before a render that should slide
+
+function animateMainAreaIn(direction){
+  mainArea.style.animation = 'none';
+  void mainArea.offsetWidth; // reflow to restart animation
+  if(direction==='left') mainArea.style.animation = 'slideInLeft .32s cubic-bezier(.2,.8,.3,1) both';
+  else if(direction==='right') mainArea.style.animation = 'slideInRight .32s cubic-bezier(.2,.8,.3,1) both';
+  else mainArea.style.animation = 'fadeSlideIn .28s ease both';
+}
+function animateCountUps(){
+  mainArea.querySelectorAll('.count-num').forEach(el=>{
+    const target = parseInt(el.dataset.target)||0;
+    const start = performance.now();
+    const dur = 450;
+    function step(now){
+      const p = Math.min(1, (now-start)/dur);
+      const eased = 1 - Math.pow(1-p, 3);
+      el.textContent = Math.round(target*eased);
+      if(p<1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  });
+}
+function animateStampPop(key){
+  requestAnimationFrame(()=>{
+    const cell = mainArea.querySelector(`[data-key="${key}"]`);
+    const stampEl = cell && cell.querySelector('.stamp');
+    if(!stampEl) return;
+    stampEl.style.setProperty('--rot', (Math.random()*16-8).toFixed(1)+'deg');
+    stampEl.classList.add('pop');
+  });
+}
 
 const mainArea = document.getElementById('mainArea');
 const overlay = document.getElementById('overlay');
@@ -615,13 +660,15 @@ function progressMsgText(count, goal, label){
   return `${label} 목표 달성! 최고예요 🎉`;
 }
 function progressBlock(id, titleText, count, goal, msg){
+  const pct = goal>0 ? count/goal : 0;
+  const isComplete = pct>=1 && count>0;
   return `
     <div class="progress-block">
       <div class="progress-label">${titleText}</div>
       <div class="progress-msg">${msg}</div>
-      <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100,Math.round((count/goal)*100))}%"></div></div>
+      <div class="progress-bar"><div class="progress-fill${isComplete?' complete':''}" style="width:${Math.min(100,Math.round(pct*100))}%"></div></div>
       <div class="goal-row">
-        <span>${count}개</span>
+        <span><span class="count-num" data-target="${count}">0</span>개</span>
         <span>목표 <input data-goal-id="${id}" type="number" min="1" max="500" value="${goal}"/>개</span>
       </div>
     </div>`;
@@ -644,8 +691,8 @@ function renderMonthView(){
       <div class="grid" id="grid"></div>
     </div>`;
 
-  document.getElementById('prevBtn').onclick = ()=>{ current.setMonth(current.getMonth()-1); loadMonth(); };
-  document.getElementById('nextBtn').onclick = ()=>{ current.setMonth(current.getMonth()+1); loadMonth(); };
+  document.getElementById('prevBtn').onclick = ()=>{ navDirection='right'; current.setMonth(current.getMonth()-1); loadMonth(); };
+  document.getElementById('nextBtn').onclick = ()=>{ navDirection='left'; current.setMonth(current.getMonth()+1); loadMonth(); };
   mainArea.querySelector('[data-goal-id="month"]').addEventListener('change', e=> saveMonthGoal(parseInt(e.target.value)||20).then(renderMonthView));
   mainArea.querySelector('[data-goal-id="year"]').addEventListener('change', e=> saveYearGoal(parseInt(e.target.value)||200).then(renderMonthView));
 
@@ -668,6 +715,8 @@ function renderMonthView(){
     cell.addEventListener('click', ()=> openDaySheet(day, entry));
     grid.appendChild(cell);
   }
+  animateMainAreaIn(navDirection); navDirection=null;
+  animateCountUps();
 }
 
 function renderPeriodList(){
@@ -702,6 +751,7 @@ function renderPeriodList(){
     });
   });
   document.getElementById('addPeriodBtn').addEventListener('click', openPeriodCreate);
+  animateMainAreaIn(navDirection); navDirection=null;
 }
 
 function renderPeriodDetail(){
@@ -766,6 +816,8 @@ function renderPeriodDetail(){
     grid.appendChild(cell);
     d.setDate(d.getDate()+1);
   }
+  animateMainAreaIn(navDirection); navDirection=null;
+  animateCountUps();
 }
 
 /* ---------- 도장/메모 시트 ---------- */
@@ -811,9 +863,10 @@ async function saveDay(){
   else { await savePeriodStamps(activePeriodId); }
 
   const stickerToAnimate = pendingSticker;
+  const savedKey = selectedKey;
   closeSheet();
   renderAll();
-  if(stickerToAnimate) burstConfetti(stickerToAnimate.color);
+  if(stickerToAnimate){ burstConfetti(stickerToAnimate.color); animateStampPop(savedKey); }
 }
 document.getElementById('saveDayBtn').addEventListener('click', saveDay);
 document.getElementById('removeStampBtn').addEventListener('click', async ()=>{
