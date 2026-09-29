@@ -337,16 +337,22 @@
   </div>
 </div>
 
-<div class="overlay" id="renameOverlay">
+<div class="overlay" id="editPeriodOverlay">
   <div class="sheet">
     <div class="sheet-head">
-      <h3>목표기간 이름 바꾸기</h3>
-      <button id="closeRenameSheet">✕</button>
+      <h3>목표기간 수정</h3>
+      <button id="closeEditPeriodSheet">✕</button>
     </div>
     <div class="field-label">캘린더 이름</div>
-    <input class="field-input" id="renameInput" maxlength="16">
-    <div class="err-msg" id="renameErr"></div>
-    <button class="save-btn" id="saveRenameBtn">저장하기</button>
+    <input class="field-input" id="editPeriodName" maxlength="16">
+    <div class="field-row">
+      <div><div class="field-label">시작일</div><input class="field-input" id="editPeriodStart" type="date"></div>
+      <div><div class="field-label">종료일</div><input class="field-input" id="editPeriodEnd" type="date"></div>
+    </div>
+    <div class="field-label">목표 도장 개수</div>
+    <input class="field-input" id="editPeriodGoal" type="number" min="1" max="365">
+    <div class="err-msg" id="editPeriodErr"></div>
+    <button class="save-btn" id="saveEditPeriodBtn">저장하기</button>
   </div>
 </div>
 
@@ -1193,7 +1199,7 @@ function renderPeriodDetail(){
     <div class="card">
       <div class="month-nav">
         <button class="back" id="backToListBtn">← 목록</button>
-        <h2 class="editable"><span>🎯 ${escapeHtml(p.name)}</span><button class="edit-title" id="renamePeriodBtn" aria-label="이름 바꾸기">✏</button></h2>
+        <h2 class="editable"><span>🎯 ${escapeHtml(p.name)}</span><button class="edit-title" id="editPeriodBtn" aria-label="목표기간 수정">✏</button></h2>
         <button class="del" id="delPeriodBtn">삭제</button>
       </div>
       <div class="period-info">${p.start} ~ ${p.end}</div>
@@ -1210,7 +1216,7 @@ function renderPeriodDetail(){
     savePeriodsList().then(renderPeriodDetail);
   });
 
-  document.getElementById('renamePeriodBtn').addEventListener('click', ()=> openRename(p));
+  document.getElementById('editPeriodBtn').addEventListener('click', ()=> openEditPeriod(p));
 
   let delConfirming = false;
   document.getElementById('delPeriodBtn').addEventListener('click', function(){
@@ -1351,28 +1357,59 @@ document.getElementById('savePeriodBtn').addEventListener('click', async ()=>{
   await loadPeriodData(id);
 });
 
-/* ---------- 목표기간 이름 바꾸기 ---------- */
-const renameOverlay = document.getElementById('renameOverlay');
-function openRename(p){
-  document.getElementById('renameInput').value = p.name;
-  document.getElementById('renameErr').textContent = '';
-  renameOverlay.dataset.id = p.id;
-  renameOverlay.classList.add('show');
+/* ---------- 목표기간 수정 (이름·기간·목표 개수) ----------
+   도장은 하루 단위로 저장돼 있어서 기간을 바꿔도 도장 데이터는 그대로다.
+   기간 밖이 된 날짜의 도장은 목표기간 캘린더에서만 빠지고 월별 캘린더에는 남는다. */
+const editPeriodOverlay = document.getElementById('editPeriodOverlay');
+const editPeriodErr = document.getElementById('editPeriodErr');
+const saveEditPeriodBtn = document.getElementById('saveEditPeriodBtn');
+let editShrinkConfirmed = false;
+function resetEditConfirm(){
+  editShrinkConfirmed = false;
+  saveEditPeriodBtn.textContent = '저장하기';
+  editPeriodErr.textContent = '';
 }
-document.getElementById('closeRenameSheet').addEventListener('click', ()=> renameOverlay.classList.remove('show'));
-renameOverlay.addEventListener('click', e=>{ if(e.target===renameOverlay) renameOverlay.classList.remove('show'); });
-document.getElementById('saveRenameBtn').addEventListener('click', async function(){
-  const name = document.getElementById('renameInput').value.trim();
-  const err = document.getElementById('renameErr');
-  const p = periods.find(x=>x.id===renameOverlay.dataset.id);
-  if(!name){ err.textContent = '캘린더 이름을 입력해주세요.'; return; }
-  if(!p){ renameOverlay.classList.remove('show'); return; }
+function openEditPeriod(p){
+  document.getElementById('editPeriodName').value = p.name;
+  document.getElementById('editPeriodStart').value = p.start;
+  document.getElementById('editPeriodEnd').value = p.end;
+  document.getElementById('editPeriodGoal').value = p.goal;
+  resetEditConfirm();
+  editPeriodOverlay.dataset.id = p.id;
+  editPeriodOverlay.classList.add('show');
+}
+function closeEditPeriod(){ editPeriodOverlay.classList.remove('show'); }
+document.getElementById('closeEditPeriodSheet').addEventListener('click', closeEditPeriod);
+editPeriodOverlay.addEventListener('click', e=>{ if(e.target===editPeriodOverlay) closeEditPeriod(); });
+editPeriodOverlay.addEventListener('input', resetEditConfirm);
+saveEditPeriodBtn.addEventListener('click', async function(){
+  const p = periods.find(x=>x.id===editPeriodOverlay.dataset.id);
+  if(!p){ closeEditPeriod(); return; }
+  const name = document.getElementById('editPeriodName').value.trim();
+  const start = document.getElementById('editPeriodStart').value;
+  const end = document.getElementById('editPeriodEnd').value;
+  const goal = parseInt(document.getElementById('editPeriodGoal').value)||10;
+  if(!name){ editPeriodErr.textContent = '캘린더 이름을 입력해주세요.'; return; }
+  if(!start || !end){ editPeriodErr.textContent = '시작일과 종료일을 선택해주세요.'; return; }
+  if(start > end){ editPeriodErr.textContent = '종료일은 시작일보다 뒤여야 해요.'; return; }
+  // 기간이 줄어 밖으로 빠지는 도장이 있으면 저장 전에 한 번 알려준다.
+  if(!editShrinkConfirmed){
+    const keep = new Set(periodDates({start, end}));
+    const dropped = periodDates(p).filter(ds=> !keep.has(ds) && readStamp(ds)?.e).length;
+    if(dropped > 0){
+      editShrinkConfirmed = true;
+      editPeriodErr.textContent = `기간 밖이 되는 도장 ${dropped}개는 이 목록에서 빠지고, 월별 캘린더에는 그대로 남아요.`;
+      this.textContent = '그래도 저장하기';
+      return;
+    }
+  }
   this.disabled = true; this.textContent = '저장 중...';
-  p.name = name;
+  p.name = name; p.start = start; p.end = end; p.goal = goal;
   await savePeriodsList();
-  this.disabled = false; this.textContent = '저장하기';
-  renameOverlay.classList.remove('show');
-  if(topTab==='period' && periodSub==='detail' && activePeriodId===p.id) renderPeriodDetail();
+  this.disabled = false;
+  resetEditConfirm();
+  closeEditPeriod();
+  if(topTab==='period' && periodSub==='detail' && activePeriodId===p.id) await loadPeriodData(p.id);
 });
 
 /* 도장이 찍힌 칸의 중심에서 하트가 위쪽 부채꼴로 솟아오른다. */
