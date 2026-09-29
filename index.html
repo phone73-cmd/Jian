@@ -99,6 +99,15 @@
   .month-card{ position:relative; }
   .month-card .month-nav{ position:absolute; left:14px; right:14px; top:16px; margin:0; z-index:2; pointer-events:none; }
   .month-card .month-nav button{ pointer-events:auto; }
+  /* 이번 달이 아닌 달을 볼 때만 나타나는 "오늘" 버튼. 슬라이드되는 제목 옆에 고정. */
+  .today-btn{
+    position:absolute; top:21px; left:calc(50% + 66px); z-index:2; height:26px; padding:0 10px; border-radius:13px;
+    border:1.5px solid var(--grape); background:var(--sel-bg); color:var(--grape);
+    font-family:'Jua',sans-serif; font-size:12px; line-height:1; cursor:pointer; transition:transform .12s ease;
+  }
+  .today-btn[hidden]{ display:none; }
+  .today-btn:active{ transform:scale(0.94); }
+  @media (max-width:340px){ .today-btn{ left:calc(50% + 58px); padding:0 6px; font-size:11px; } }
   .pager{ margin:0 -14px; }
   .pager.sliding{ overflow:hidden; }
   .pager .track{ display:flex; align-items:flex-start; }
@@ -934,10 +943,12 @@ function renderMonthView(){
         <button id="prevBtn" aria-label="이전 달">‹</button>
         <button id="nextBtn" aria-label="다음 달">›</button>
       </div>
+      <button class="today-btn" id="todayBtn" aria-label="이번 달로 돌아가기"${isCurrentMonthShown() ? ' hidden' : ''}>오늘</button>
     </div>`;
 
   document.getElementById('prevBtn').onclick = ()=> changeMonth(-1);
   document.getElementById('nextBtn').onclick = ()=> changeMonth(1);
+  document.getElementById('todayBtn').onclick = goToday;
   mainArea.querySelector('[data-goal-id="month"]').addEventListener('change', e=> saveMonthGoal(parseInt(e.target.value)||20).then(renderMonthView));
   mainArea.querySelector('.grid').addEventListener('click', e=>{
     if(performance.now() < suppressTapUntil) return;
@@ -959,18 +970,22 @@ const SLIDE_COMMIT_SPEED = 0.5;      // 또는 이 속도(px/ms) 이상으로 �
 let slide = null;                    // 진행 중인 슬라이드 하나만. { pager, track, W, heights, dx, samples, mode }
 let suppressTapUntil = 0;
 
-function prepareSlide(){
+/* jump: 이전/다음 달 자리에 대신 붙일 먼 달(오늘로 돌아가기용). 없으면 바로 이웃한 달. */
+function prepareSlide(jump){
   const pager = document.getElementById('pager');
   if(!pager || topTab!=='month') return null;
   const track = pager.firstElementChild;
   const W = pager.clientWidth;
+  const idx = d=> d.getFullYear()*12 + d.getMonth();
+  const prevMonth = jump && idx(jump) < idx(current) ? jump : monthDate(-1);
+  const nextMonth = jump && idx(jump) > idx(current) ? jump : monthDate(1);
   pager.style.height = track.firstElementChild.offsetHeight + 'px';   // 달마다 줄 수가 달라도 높이가 튀지 않게
   pager.classList.add('sliding');
   track.style.transition = 'none';
-  track.insertAdjacentHTML('afterbegin', monthPageHTML(monthDate(-1)));
-  track.insertAdjacentHTML('beforeend', monthPageHTML(monthDate(1)));
+  track.insertAdjacentHTML('afterbegin', monthPageHTML(prevMonth));
+  track.insertAdjacentHTML('beforeend', monthPageHTML(nextMonth));
   track.style.transform = `translateX(${-W}px)`;
-  return { pager, track, W, heights:[...track.children].map(p=>p.offsetHeight), dx:0, samples:[], mode:'drag' };
+  return { pager, track, W, heights:[...track.children].map(p=>p.offsetHeight), dx:0, samples:[], mode:'drag', jump:jump||null };
 }
 
 function settleSlide(s, dir){   // dir: -1 이전 달, 0 제자리, +1 다음 달
@@ -990,7 +1005,7 @@ function settleSlide(s, dir){   // dir: -1 이전 달, 0 제자리, +1 다음 �
     s.track.removeEventListener('transitionend', onEnd);
     slide = null;
     if(topTab!=='month') return;
-    if(dir!==0) current.setMonth(current.getMonth()+dir);
+    if(dir!==0) current = s.jump ? new Date(s.jump) : monthDate(dir);
     navDirection = 'none';   // 이미 움직임이 끝났으니 다시 그릴 때는 그대로
     renderAll();
   };
@@ -1002,9 +1017,22 @@ function settleSlide(s, dir){   // dir: -1 이전 달, 0 제자리, +1 다음 �
 function changeMonth(delta){   // ‹ › 버튼
   if(slide) return;
   const s = prepareSlide();
-  if(!s){ current.setMonth(current.getMonth()+delta); renderAll(); return; }
+  if(!s){ current = monthDate(delta); renderAll(); return; }
   slide = s;
   settleSlide(s, delta);
+}
+
+function todayMonth(){ const t = new Date(); return new Date(t.getFullYear(), t.getMonth(), 1); }
+function isCurrentMonthShown(){ const t = todayMonth(); return t.getFullYear()===current.getFullYear() && t.getMonth()===current.getMonth(); }
+
+function goToday(){   // "오늘" 버튼: 몇 달 떨어져 있어도 이번 달이 옆에서 한 번에 밀려 들어온다
+  if(slide || isCurrentMonthShown()) return;
+  const target = todayMonth();
+  const dir = target > current ? 1 : -1;
+  const s = prepareSlide(target);
+  if(!s){ current = target; renderAll(); return; }
+  slide = s;
+  settleSlide(s, dir);
 }
 
 /* 손을 떼는 순간 기준 최근 100ms 동안의 속도(px/ms). 그 사이에 움직임이 없었으면 0 —
