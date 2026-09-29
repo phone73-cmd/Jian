@@ -395,14 +395,33 @@ function sbHeaders(){
   return { 'apikey': sbConfig.key, 'Authorization': `Bearer ${sbConfig.key}`, 'Content-Type':'application/json' };
 }
 
+function stampCount(jsonStr){
+  try{ return Object.values(JSON.parse(jsonStr||'{}')).filter(x=>x&&x.e).length; }catch(e){ return null; }
+}
 async function supabaseLoadAll(){
   if(!sbConfig) return {ok:false};
   try{
-    const res = await fetch(sbRestUrl(`app_data?app_id=eq.${encodeURIComponent(sbConfig.appId)}&select=key,value`), {
+    const res = await fetch(sbRestUrl(`app_data?app_id=eq.${encodeURIComponent(sbConfig.appId)}&select=key,value,updated_at`), {
       headers: sbHeaders()
     });
     if(!res.ok){ const d = await res.json().catch(()=>({})); return {ok:false, error: d.message || ('HTTP '+res.status)}; }
     const rows = await res.json();
+
+    /* 진단: 이번 달 키의 로컬(새로고침 전) vs 서버에서 받은 도장 개수를 비교해서,
+       서버 응답 자체가 줄어든 건지(서버/쓰기 문제) 아니면 화면 표시 쪽 문제인지 구분한다. */
+    const mKey = monthKey(current);
+    const beforeVal = dbCache[mKey];
+    const beforeCount = stampCount(beforeVal);
+    const serverRow = rows.find(r=>r.key===mKey);
+    const afterCount = stampCount(serverRow ? serverRow.value : null);
+    console.log('[diag] rows from server:', rows.map(r=>({key:r.key, updated_at:r.updated_at, len:(r.value||'').length})));
+    console.log('[diag] month key', mKey, 'local count(before)=', beforeCount, 'server count(after)=', afterCount, 'server updated_at=', serverRow&&serverRow.updated_at);
+    if(beforeCount!=null && afterCount!=null && afterCount < beforeCount){
+      showSaveError(`⚠️ 진단: 새로고침 전 이 기기 도장 ${beforeCount}개 → 서버에서 받은 도장 ${afterCount}개 (서버 갱신시각 ${serverRow.updated_at})`);
+    } else if(beforeCount!=null && !serverRow){
+      showSaveError(`⚠️ 진단: 이 달(${mKey}) 데이터가 서버 응답에 아예 없음 (로컬엔 ${beforeCount}개 있었음)`);
+    }
+
     dbCache = {};
     rows.forEach(r=>{ dbCache[r.key] = r.value; });
     persistLocalDB();
@@ -506,7 +525,7 @@ function showSaveError(msg){
   banner.textContent = msg || '⚠️ 저장에 실패했어요. 잠시 후 다시 시도해주세요.';
   banner.style.display = 'block';
   clearTimeout(banner._hideTimer);
-  banner._hideTimer = setTimeout(()=>{ banner.style.display='none'; }, 5000);
+  banner._hideTimer = setTimeout(()=>{ banner.style.display='none'; }, 15000);
 }
 
 /* ---------- Supabase 연동 설정 UI ---------- */
