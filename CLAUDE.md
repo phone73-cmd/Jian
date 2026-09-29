@@ -7,7 +7,7 @@
 - 데이터: `localStorage` 캐시 + Supabase `app_data` 테이블(key/value) 동기화 + Realtime
   - 도장은 하루 한 행 `stamp:YYYY-MM-DD`이고, 월별·목표기간 캘린더가 같은 값을 같이 읽는다.
   - 예전 형식(`stamps:YYYY-MM`, `periodStamps:<id>`)은 `migrateLegacyStamps()`가 하루 단위로 옮기고 지운다.
-  - 그 밖의 키: `goal:YYYY-MM`(이번 달 목표), `periods:list`(목표기간 목록), `settings:bgImage`(배경 사진)
+  - 그 밖의 키: `goal:YYYY-MM`(이번 달 목표), `periods:list`(목표기간 목록), `settings:bgImage`(배경 사진), `settings:title`(홈 제목, 모든 기기 공통)
 
 ## 작업 규칙
 - PR만 만들고, 병합은 사용자가 "병합"이라고 할 때만 한다.

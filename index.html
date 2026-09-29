@@ -114,6 +114,12 @@
   .pager.sliding .track{ will-change:transform; }
   .pager .page{ flex:0 0 100%; min-width:0; padding:0 14px; }
   .page-title{ font-family:'Jua',sans-serif; font-weight:400; font-size:19px; margin:0 0 10px; height:36px; display:flex; align-items:center; justify-content:center; color:var(--ink); }
+  .month-nav h2{ min-width:0; word-break:keep-all; overflow-wrap:anywhere; }
+  .month-nav h2 span{ min-width:0; }
+  .month-nav h2.editable{ display:flex; align-items:center; justify-content:center; gap:6px; }
+  .month-nav h2 .edit-title{ width:26px; height:26px; font-size:12px; box-shadow:none; background:var(--soft); color:var(--grape); }
+  .title-row h1{ padding:0 44px; word-break:keep-all; overflow-wrap:anywhere; }
+  .title-row h1.long{ font-size:20px; }
   .month-nav .del{ background:var(--del-bg); color:var(--coral); font-size:12px; width:auto; padding:0 10px; border-radius:12px; }
   .month-nav .back{ background:var(--back-bg); color:var(--grape); font-size:13px; width:auto; padding:0 12px; border-radius:12px; }
 
@@ -284,7 +290,7 @@
 <div id="pullIndicator" aria-hidden="true"></div>
 <div class="app">
   <div class="title-row">
-    <h1>🌟 지안이 칭찬스티커 🌟</h1>
+    <h1 id="appTitle">🌟 지안이 칭찬스티커 🌟</h1>
     <button class="settings-btn" id="settingsBtn" aria-label="설정">⚙</button>
     <div id="syncStatus" style="font-size:11px;color:var(--sub);margin-top:2px;"></div>
   </div>
@@ -331,6 +337,19 @@
   </div>
 </div>
 
+<div class="overlay" id="renameOverlay">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h3>목표기간 이름 바꾸기</h3>
+      <button id="closeRenameSheet">✕</button>
+    </div>
+    <div class="field-label">캘린더 이름</div>
+    <input class="field-input" id="renameInput" maxlength="16">
+    <div class="err-msg" id="renameErr"></div>
+    <button class="save-btn" id="saveRenameBtn">저장하기</button>
+  </div>
+</div>
+
 <div class="overlay" id="cfgOverlay">
   <div class="sheet">
     <div class="sheet-head">
@@ -338,6 +357,12 @@
       <button id="closeCfgSheet">✕</button>
     </div>
     <div class="cfg-sub" id="cfgSub"></div>
+
+    <div class="cfg-title">앱 제목</div>
+    <input class="field-input" id="appTitleInput" maxlength="20" placeholder="🌟 지안이 칭찬스티커 🌟">
+    <button class="save-btn" id="saveTitleBtn">제목 저장</button>
+    <button class="remove-btn" id="resetTitleBtn">기본 제목으로 되돌리기</button>
+    <div class="err-msg" id="titleErr"></div>
 
     <div class="cfg-title">화면 모드</div>
     <div class="seg" role="radiogroup" aria-label="화면 모드">
@@ -578,6 +603,7 @@ function handleRemoteChange(payload){
   remoteRenderTimer = setTimeout(reloadCurrentView, 150);
 }
 async function reloadCurrentView(){
+  applyTitle();
   if(slide) return; // 슬라이드가 끝나면 어차피 최신 데이터로 다시 그린다
   if(topTab==='month') renderAll();
   else if(periodSub==='list'){ await loadPeriods(); renderAll(); }
@@ -661,6 +687,34 @@ document.getElementById('disconnectSbBtn').addEventListener('click', ()=>{
 
 
 
+function escapeHtml(t){ return String(t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- 앱 제목 (모든 기기 공통: settings:title) ---------- */
+const DEFAULT_TITLE = '🌟 지안이 칭찬스티커 🌟';
+function applyTitle(){
+  const t = (safeGet('settings:title') || '').trim() || DEFAULT_TITLE;
+  const h = document.getElementById('appTitle');
+  h.textContent = t;
+  h.classList.toggle('long', t.length > 12);
+  document.title = t;
+}
+document.getElementById('saveTitleBtn').addEventListener('click', async function(){
+  const input = document.getElementById('appTitleInput');
+  const err = document.getElementById('titleErr');
+  const t = input.value.trim();
+  err.textContent = '';
+  if(!t){ err.textContent = '제목을 입력해주세요. 기본 제목으로 돌리려면 아래 버튼을 눌러주세요.'; return; }
+  this.disabled = true; this.textContent = '저장 중...';
+  await safeSet('settings:title', t);
+  this.disabled = false; this.textContent = '제목 저장';
+  applyTitle();
+});
+document.getElementById('resetTitleBtn').addEventListener('click', async ()=>{
+  await safeDelete('settings:title');
+  applyTitle();
+  document.getElementById('appTitleInput').value = DEFAULT_TITLE;
+});
+
 /* ---------- 배경화면 ---------- */
 async function loadBg(){
   const raw = await safeGet('settings:bgImage');
@@ -720,6 +774,8 @@ try{
 }catch(e){}
 
 function renderCfg(){
+  document.getElementById('appTitleInput').value = document.getElementById('appTitle').textContent;
+  document.getElementById('titleErr').textContent = '';
   document.getElementById('cfgSub').textContent = `v${APP_VERSION} · ${sbConfig ? 'Supabase 연동됨' : '이 기기에만 저장'}`;
   document.querySelectorAll('#cfgOverlay input[name="theme"]').forEach(r=>{ r.checked = r.value===THEME; });
   document.getElementById('bgColorGrid').innerHTML =
@@ -1101,7 +1157,7 @@ function renderPeriodList(){
       return `
         <div class="period-card" data-id="${p.id}">
           <div class="period-card-head">
-            <strong>🎯 ${p.name}</strong>
+            <strong>🎯 ${escapeHtml(p.name)}</strong>
             <span>${p.start} ~ ${p.end}</span>
           </div>
           <div class="mini-bar"><div class="mini-fill" style="width:${pct}%"></div></div>
@@ -1137,7 +1193,7 @@ function renderPeriodDetail(){
     <div class="card">
       <div class="month-nav">
         <button class="back" id="backToListBtn">← 목록</button>
-        <h2>🎯 ${p.name}</h2>
+        <h2 class="editable"><span>🎯 ${escapeHtml(p.name)}</span><button class="edit-title" id="renamePeriodBtn" aria-label="이름 바꾸기">✏</button></h2>
         <button class="del" id="delPeriodBtn">삭제</button>
       </div>
       <div class="period-info">${p.start} ~ ${p.end}</div>
@@ -1153,6 +1209,8 @@ function renderPeriodDetail(){
     p.goal = parseInt(e.target.value)||10;
     savePeriodsList().then(renderPeriodDetail);
   });
+
+  document.getElementById('renamePeriodBtn').addEventListener('click', ()=> openRename(p));
 
   let delConfirming = false;
   document.getElementById('delPeriodBtn').addEventListener('click', function(){
@@ -1293,6 +1351,30 @@ document.getElementById('savePeriodBtn').addEventListener('click', async ()=>{
   await loadPeriodData(id);
 });
 
+/* ---------- 목표기간 이름 바꾸기 ---------- */
+const renameOverlay = document.getElementById('renameOverlay');
+function openRename(p){
+  document.getElementById('renameInput').value = p.name;
+  document.getElementById('renameErr').textContent = '';
+  renameOverlay.dataset.id = p.id;
+  renameOverlay.classList.add('show');
+}
+document.getElementById('closeRenameSheet').addEventListener('click', ()=> renameOverlay.classList.remove('show'));
+renameOverlay.addEventListener('click', e=>{ if(e.target===renameOverlay) renameOverlay.classList.remove('show'); });
+document.getElementById('saveRenameBtn').addEventListener('click', async function(){
+  const name = document.getElementById('renameInput').value.trim();
+  const err = document.getElementById('renameErr');
+  const p = periods.find(x=>x.id===renameOverlay.dataset.id);
+  if(!name){ err.textContent = '캘린더 이름을 입력해주세요.'; return; }
+  if(!p){ renameOverlay.classList.remove('show'); return; }
+  this.disabled = true; this.textContent = '저장 중...';
+  p.name = name;
+  await savePeriodsList();
+  this.disabled = false; this.textContent = '저장하기';
+  renameOverlay.classList.remove('show');
+  if(topTab==='period' && periodSub==='detail' && activePeriodId===p.id) renderPeriodDetail();
+});
+
 function burstConfetti(color){
   const colors=[color,'#FFD166','#8067DC','#7FD1C0'];
   for(let i=0;i<14;i++){
@@ -1379,6 +1461,7 @@ async function init(){
   buildStickerGrid();
   document.getElementById('appVersion').textContent = 'v' + APP_VERSION;
   loadLocalDB();
+  applyTitle();
   sbConfig = loadSbConfig();
   let loaded = !sbConfig;
   if(sbConfig){
@@ -1391,6 +1474,7 @@ async function init(){
   // Only migrate from data we trust to be current; a failed load leaves a possibly stale local cache.
   if(loaded) await migrateLegacyStamps();
   await loadBg();
+  applyTitle();
   renderAll();
 }
 init();
