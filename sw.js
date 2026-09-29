@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jian-stamp-calendar-v1.0.7';
+const CACHE_NAME = 'jian-stamp-calendar-v1.0.8';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (event) => {
