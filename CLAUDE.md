@@ -5,6 +5,9 @@
 - 배포: `main` 브랜치 → GitHub Pages 자동 배포
 - 버전: `main`에 푸시되면 `.github/workflows/bump-version.yml`이 patch 버전을 자동으로 올리고 `manifest.json`, `index.html`(APP_VERSION), `sw.js`(CACHE_NAME)에 반영한다. 버전을 손으로 올리지 않는다.
 - 데이터: `localStorage` 캐시 + Supabase `app_data` 테이블(key/value) 동기화 + Realtime
+  - 도장은 하루 한 행 `stamp:YYYY-MM-DD`이고, 월별·목표기간 캘린더가 같은 값을 같이 읽는다.
+  - 예전 형식(`stamps:YYYY-MM`, `periodStamps:<id>`)은 `migrateLegacyStamps()`가 하루 단위로 옮기고 지운다.
+  - 그 밖의 키: `goal:YYYY-MM`(이번 달 목표), `periods:list`(목표기간 목록), `settings:bgImage`(배경 사진)
 
 ## 작업 규칙
 - PR만 만들고, 병합은 사용자가 "병합"이라고 할 때만 한다.
