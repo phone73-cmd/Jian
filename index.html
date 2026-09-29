@@ -65,8 +65,6 @@
   .app{ width:100%; max-width:480px; animation: appLoadIn .5s ease both; }
   @keyframes appLoadIn{ from{ opacity:0; transform:translateY(14px); } to{ opacity:1; transform:translateY(0); } }
   @keyframes fadeSlideIn{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:translateY(0); } }
-  @keyframes slideInLeft{ from{ opacity:0; transform:translateX(26px); } to{ opacity:1; transform:translateX(0); } }
-  @keyframes slideInRight{ from{ opacity:0; transform:translateX(-26px); } to{ opacity:1; transform:translateX(0); } }
   .title-row{ text-align:center; margin-bottom:14px; position:relative; }
   .title-row h1{ font-family:'Jua',sans-serif; font-weight:400; font-size:26px; color:var(--grape); margin:0 0 2px; letter-spacing:-0.5px; }
   .title-row p{ margin:0; font-size:13px; color:var(--sub); }
@@ -98,6 +96,16 @@
   }
   .month-nav button:active{ transform:translateY(2px) scale(0.96); box-shadow:none; }
   .month-nav h2{ font-family:'Jua',sans-serif; font-weight:400; font-size:19px; margin:0; color:var(--ink); flex:1; text-align:center; }
+  /* 월별 캘린더: 제목·목표·날짜 칸이 한 "페이지"이고, 페이지들이 손가락을 따라 옆으로 밀린다. ‹ › 버튼은 제자리에 고정. */
+  .month-card{ position:relative; }
+  .month-card .month-nav{ position:absolute; left:14px; right:14px; top:16px; margin:0; z-index:2; pointer-events:none; }
+  .month-card .month-nav button{ pointer-events:auto; }
+  .pager{ margin:0 -14px; }
+  .pager.sliding{ overflow:hidden; }
+  .pager .track{ display:flex; align-items:flex-start; }
+  .pager.sliding .track{ will-change:transform; }
+  .pager .page{ flex:0 0 100%; min-width:0; padding:0 14px; }
+  .page-title{ font-family:'Jua',sans-serif; font-weight:400; font-size:19px; margin:0 0 10px; height:36px; display:flex; align-items:center; justify-content:center; color:var(--ink); }
   .month-nav .del{ background:var(--del-bg); color:var(--coral); font-size:12px; width:auto; padding:0 10px; border-radius:12px; }
   .month-nav .back{ background:var(--back-bg); color:var(--grape); font-size:13px; width:auto; padding:0 12px; border-radius:12px; }
 
@@ -390,22 +398,21 @@ let topTab = 'month'; // 'month' | 'period'
 let periodSub = 'list'; // 'list' | 'detail'
 let activePeriodId = null;
 let periods = [];
-let stampData = {};
 let periodStampData = {};
-let monthGoal = 20;
 let selectedKey = null, pendingSticker = null;
-let navDirection = null; // 'left' | 'right' | null — set right before a render that should slide
+let navDirection = null; // 'none' = 다시 그리되 움직임 없이 (월 슬라이드가 이미 끝난 직후). 그 외에는 페이드.
 
 function animateMainAreaIn(direction){
   mainArea.style.animation = 'none';
+  if(direction==='none') return;
   void mainArea.offsetWidth; // reflow to restart animation
-  if(direction==='left') mainArea.style.animation = 'slideInLeft .32s cubic-bezier(.2,.8,.3,1) both';
-  else if(direction==='right') mainArea.style.animation = 'slideInRight .32s cubic-bezier(.2,.8,.3,1) both';
-  else mainArea.style.animation = 'fadeSlideIn .28s ease both';
+  mainArea.style.animation = 'fadeSlideIn .28s ease both';
 }
-function animateCountUps(){
+function animateCountUps(instant){
   mainArea.querySelectorAll('.count-num').forEach(el=>{
     const target = parseInt(el.dataset.target)||0;
+    if(instant){ el.textContent = target; return; }
+    el.textContent = '0';
     const start = performance.now();
     const dur = 450;
     function step(now){
@@ -570,7 +577,8 @@ function handleRemoteChange(payload){
   remoteRenderTimer = setTimeout(reloadCurrentView, 150);
 }
 async function reloadCurrentView(){
-  if(topTab==='month') await loadMonth();
+  if(slide) return; // 슬라이드가 끝나면 어차피 최신 데이터로 다시 그린다
+  if(topTab==='month') renderAll();
   else if(periodSub==='list'){ await loadPeriods(); renderAll(); }
   else if(activePeriodId) await loadPeriodData(activePeriodId);
 }
@@ -639,7 +647,7 @@ document.getElementById('connectSbBtn').addEventListener('click', async ()=>{
   setSyncStatus('☁️ Supabase 연동됨');
   await migrateLegacyStamps();
   await connectRealtime();
-  await loadMonth();
+  renderAll();
 });
 
 document.getElementById('disconnectSbBtn').addEventListener('click', ()=>{
@@ -837,24 +845,13 @@ async function migrateLegacyStamps(){
   for(const k of legacyKeys){ await safeDelete(k); }
 }
 
-async function loadMonth(){
-  const y = current.getFullYear(), m = current.getMonth();
-  const daysInMonth = new Date(y, m+1, 0).getDate();
-  stampData = {};
-  for(let day=1; day<=daysInMonth; day++){
-    const entry = readStamp(dateStr(new Date(y, m, day)));
-    if(entry) stampData[day] = entry;
-  }
-  monthGoal = parseInt(safeGet(goalKey(current))) || 20;
-  renderAll();
-}
 async function loadPeriodData(id){
   periodStampData = {};
   const p = periods.find(x=>x.id===id);
   if(p) periodDates(p).forEach(ds=>{ const entry = readStamp(ds); if(entry) periodStampData[ds] = entry; });
   renderAll();
 }
-async function saveMonthGoal(val){ monthGoal = val; await safeSet(goalKey(current), String(val)); }
+async function saveMonthGoal(val){ await safeSet(goalKey(current), String(val)); }
 async function savePeriodsList(){ await safeSet('periods:list', JSON.stringify(periods)); }
 
 async function refreshData(){
@@ -868,7 +865,7 @@ async function refreshData(){
 }
 
 /* ---------- 탭 ---------- */
-document.getElementById('tabMonth').addEventListener('click', ()=>{ topTab='month'; loadMonth(); });
+document.getElementById('tabMonth').addEventListener('click', ()=>{ topTab='month'; renderAll(); });
 document.getElementById('tabPeriod').addEventListener('click', async ()=>{
   topTab='period'; periodSub='list';
   await loadPeriods();
@@ -905,60 +902,176 @@ function progressBlock(id, titleText, count, goal, msg){
       <div class="progress-msg">${msg}</div>
       <div class="progress-bar"><div class="progress-fill${isComplete?' complete':''}" style="width:${Math.min(100,Math.round(pct*100))}%"></div></div>
       <div class="goal-row">
-        <span><span class="count-num" data-target="${count}">0</span>개</span>
+        <span><span class="count-num" data-target="${count}">${count}</span>개</span>
         <span>목표 <input data-goal-id="${id}" type="number" min="1" max="500" value="${goal}"/>개</span>
       </div>
     </div>`;
 }
 
-function changeMonth(delta){
-  navDirection = delta > 0 ? 'left' : 'right';
-  current.setMonth(current.getMonth() + delta);
-  loadMonth();
+function monthDate(offset){ return new Date(current.getFullYear(), current.getMonth()+offset, 1); }
+
+/* 한 달치 "페이지" HTML. 현재 달과 슬라이드 중 옆에 붙는 달이 같은 함수로 만들어져서 모양이 똑같다. */
+function monthPageHTML(d){
+  const y = d.getFullYear(), m = d.getMonth();
+  const firstDay = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const goal = parseInt(safeGet(goalKey(d))) || 20;
+  const today = new Date();
+  const isThisMonth = today.getFullYear()===y && today.getMonth()===m;
+  let count = 0, cells = '<div class="cell empty"></div>'.repeat(firstDay);
+  for(let day=1; day<=daysInMonth; day++){
+    const dow = (firstDay+day-1)%7;
+    const entry = readStamp(dateStr(new Date(y, m, day)));
+    if(entry && entry.e) count++;
+    const cls = 'cell'+(dow===0?' sun':'')+(dow===6?' sat':'')+(isThisMonth && today.getDate()===day?' today':'');
+    cells += `<div class="${cls}" data-key="${day}"><div class="daynum">${day}</div>`
+      + (entry && entry.e ? `<div class="stamp"><div class="ring" style="color:${entry.color}"></div><div class="badge">${entry.e}</div></div>` : '')
+      + (entry && entry.note ? '<div class="note-dot"></div>' : '')
+      + '</div>';
+  }
+  return `<section class="page">
+    <h2 class="page-title">${y}년 ${m+1}월</h2>
+    ${progressBlock('month','🗓️ 이번 달 목표', count, goal, progressMsgText(count, goal, '지안이'))}
+    <div class="weekdays"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
+    <div class="grid">${cells}</div>
+  </section>`;
 }
 
 function renderMonthView(){
-  const y = current.getFullYear(), m = current.getMonth();
-  const monthCount = Object.values(stampData).filter(v=>v && v.e).length;
-
   mainArea.innerHTML = `
-    <div class="card">
+    <div class="card month-card">
+      <div class="pager" id="pager"><div class="track">${monthPageHTML(current)}</div></div>
       <div class="month-nav">
-        <button id="prevBtn">‹</button>
-        <h2>${y}년 ${m+1}월</h2>
-        <button id="nextBtn">›</button>
+        <button id="prevBtn" aria-label="이전 달">‹</button>
+        <button id="nextBtn" aria-label="다음 달">›</button>
       </div>
-      ${progressBlock('month','🗓️ 이번 달 목표', monthCount, monthGoal, progressMsgText(monthCount, monthGoal, '지안이'))}
-      <div class="weekdays"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
-      <div class="grid" id="grid"></div>
     </div>`;
 
   document.getElementById('prevBtn').onclick = ()=> changeMonth(-1);
   document.getElementById('nextBtn').onclick = ()=> changeMonth(1);
   mainArea.querySelector('[data-goal-id="month"]').addEventListener('change', e=> saveMonthGoal(parseInt(e.target.value)||20).then(renderMonthView));
+  mainArea.querySelector('.grid').addEventListener('click', e=>{
+    if(performance.now() < suppressTapUntil) return;
+    const cell = e.target.closest('.cell:not(.empty)');
+    if(!cell) return;
+    const day = Number(cell.dataset.key);
+    openDaySheet(day, readStamp(dateStr(new Date(current.getFullYear(), current.getMonth(), day))));
+  });
 
-  const grid = document.getElementById('grid');
-  const firstDay = new Date(y,m,1).getDay();
-  const daysInMonth = new Date(y,m+1,0).getDate();
-  const today = new Date();
-  const isThisMonth = today.getFullYear()===y && today.getMonth()===m;
-
-  for(let i=0;i<firstDay;i++){ const d=document.createElement('div'); d.className='cell empty'; grid.appendChild(d); }
-  for(let day=1; day<=daysInMonth; day++){
-    const dow = (firstDay+day-1)%7;
-    const cell = document.createElement('div');
-    cell.className = 'cell'+(dow===0?' sun':'')+(dow===6?' sat':'')+(isThisMonth && today.getDate()===day?' today':'');
-    cell.dataset.key = day;
-    cell.innerHTML = `<div class="daynum">${day}</div>`;
-    const entry = stampData[day];
-    if(entry && entry.e) cell.innerHTML += `<div class="stamp"><div class="ring" style="color:${entry.color}"></div><div class="badge">${entry.e}</div></div>`;
-    if(entry && entry.note) cell.innerHTML += `<div class="note-dot"></div>`;
-    cell.addEventListener('click', ()=> openDaySheet(day, entry));
-    grid.appendChild(cell);
-  }
+  const instant = navDirection==='none';
   animateMainAreaIn(navDirection); navDirection=null;
-  animateCountUps();
+  animateCountUps(instant);
 }
+
+/* ---------- 월 슬라이드: 손가락을 따라 움직이고, 놓으면 남은 거리를 부드럽게 마저 이동 ---------- */
+const SLIDE_MS = 320, SLIDE_EASE = 'cubic-bezier(.22,.8,.3,1)';
+const SLIDE_COMMIT_RATIO = 0.3;      // 화면 폭의 30% 이상 밀면 다음 달로
+const SLIDE_COMMIT_SPEED = 0.5;      // 또는 이 속도(px/ms) 이상으로 튕기면
+let slide = null;                    // 진행 중인 슬라이드 하나만. { pager, track, W, heights, dx, samples, mode }
+let suppressTapUntil = 0;
+
+function prepareSlide(){
+  const pager = document.getElementById('pager');
+  if(!pager || topTab!=='month') return null;
+  const track = pager.firstElementChild;
+  const W = pager.clientWidth;
+  pager.style.height = track.firstElementChild.offsetHeight + 'px';   // 달마다 줄 수가 달라도 높이가 튀지 않게
+  pager.classList.add('sliding');
+  track.style.transition = 'none';
+  track.insertAdjacentHTML('afterbegin', monthPageHTML(monthDate(-1)));
+  track.insertAdjacentHTML('beforeend', monthPageHTML(monthDate(1)));
+  track.style.transform = `translateX(${-W}px)`;
+  return { pager, track, W, heights:[...track.children].map(p=>p.offsetHeight), dx:0, samples:[], mode:'drag' };
+}
+
+function settleSlide(s, dir){   // dir: -1 이전 달, 0 제자리, +1 다음 달
+  s.mode = 'settling';
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const ms = reduced ? 0 : SLIDE_MS;
+  suppressTapUntil = performance.now() + ms + 120;   // 이동 중에는 아직 이전 달 기준이라 날짜 탭을 무시
+  void s.track.offsetWidth;   // 드래그 중 위치를 확정한 뒤에 전환을 시작
+  s.track.style.transition = ms ? `transform ${ms}ms ${SLIDE_EASE}` : 'none';
+  s.pager.style.transition = ms ? `height ${ms}ms ${SLIDE_EASE}` : 'none';
+  s.track.style.transform = `translateX(${-(1+dir)*s.W}px)`;
+  s.pager.style.height = s.heights[1+dir] + 'px';
+  let done = false;
+  const finish = ()=>{
+    if(done) return;
+    done = true;
+    s.track.removeEventListener('transitionend', onEnd);
+    slide = null;
+    if(topTab!=='month') return;
+    if(dir!==0) current.setMonth(current.getMonth()+dir);
+    navDirection = 'none';   // 이미 움직임이 끝났으니 다시 그릴 때는 그대로
+    renderAll();
+  };
+  const onEnd = e=>{ if(e.target===s.track && e.propertyName==='transform') finish(); };
+  s.track.addEventListener('transitionend', onEnd);
+  setTimeout(finish, ms + 80);
+}
+
+function changeMonth(delta){   // ‹ › 버튼
+  if(slide) return;
+  const s = prepareSlide();
+  if(!s){ current.setMonth(current.getMonth()+delta); renderAll(); return; }
+  slide = s;
+  settleSlide(s, delta);
+}
+
+/* 손을 떼는 순간 기준 최근 100ms 동안의 속도(px/ms). 그 사이에 움직임이 없었으면 0 —
+   느리게 끌다가 멈춘 뒤 놓은 건 튕긴 게 아니다. */
+function slideVelocity(s){
+  const now = performance.now();
+  const recent = s.samples.filter(p=> now - p.t <= 100);
+  if(recent.length < 2) return 0;
+  const first = recent[0], last = recent[recent.length-1];
+  return last.t > first.t ? (last.x - first.x) / (last.t - first.t) : 0;
+}
+
+let swipeStart = null;   // 손가락이 닿은 뒤 아직 가로/세로가 정해지기 전의 시작점
+mainArea.addEventListener('touchstart', e=>{
+  swipeStart = null;
+  if(topTab!=='month' || slide || e.touches.length!==1 || document.querySelector('.overlay.show')) return;
+  swipeStart = { x:e.touches[0].clientX, y:e.touches[0].clientY, t:performance.now() };
+}, {passive:true});
+
+mainArea.addEventListener('touchmove', e=>{
+  const x = e.touches[0].clientX, y = e.touches[0].clientY;
+  if(swipeStart){
+    const dx = x - swipeStart.x, dy = y - swipeStart.y;
+    if(Math.max(Math.abs(dx), Math.abs(dy)) < 8) return;
+    const start = swipeStart;
+    swipeStart = null;
+    if(Math.abs(dy) >= Math.abs(dx)) return;   // 세로로 움직이면 당겨서 새로고침이 맡는다
+    const s = prepareSlide();
+    if(!s) return;
+    slide = s;
+    s.x0 = x;                                   // 판정에 쓴 거리는 빼고, 이 순간부터 손가락을 따라간다
+    s.samples.push({ x:start.x, t:start.t }, { x, t:performance.now() });   // 판정 전에 움직인 것도 속도에 반영
+    return;
+  }
+  if(!slide || slide.mode!=='drag') return;
+  e.preventDefault();
+  slide.dx = Math.max(-slide.W, Math.min(slide.W, x - slide.x0));
+  slide.track.style.transform = `translateX(${-slide.W + slide.dx}px)`;
+  slide.samples.push({ x, t:performance.now() });
+  if(slide.samples.length > 8) slide.samples.shift();
+}, {passive:false});
+
+function endSwipe(cancelled){
+  swipeStart = null;
+  if(!slide || slide.mode!=='drag') return;
+  const s = slide;
+  suppressTapUntil = performance.now() + 350;   // 밀고 뗄 때 날짜 칸이 눌린 것으로 처리되지 않게
+  const v = slideVelocity(s);
+  let dir = 0;
+  if(!cancelled && (Math.abs(s.dx) > s.W*SLIDE_COMMIT_RATIO || (Math.abs(v) > SLIDE_COMMIT_SPEED && Math.abs(s.dx) > 24))){
+    dir = s.dx < 0 ? 1 : -1;
+  }
+  settleSlide(s, dir);
+}
+mainArea.addEventListener('touchend', ()=> endSwipe(false));
+mainArea.addEventListener('touchcancel', ()=> endSwipe(true));
 
 function renderPeriodList(){
   let cardsHtml = '';
@@ -1096,9 +1209,9 @@ function buildStickerGrid(){
 /* selectedKey는 월별 화면에선 날짜 숫자, 목표기간 화면에선 'YYYY-MM-DD'. 어느 쪽이든 같은 하루 행에 저장한다. */
 async function saveSelectedDay(entry){
   const ds = topTab==='month' ? dateStr(new Date(current.getFullYear(), current.getMonth(), selectedKey)) : selectedKey;
-  const store = topTab==='month' ? stampData : periodStampData;
-  if(entry){ store[selectedKey] = entry; await safeSet(stampKey(ds), JSON.stringify(entry)); }
-  else { delete store[selectedKey]; await safeDelete(stampKey(ds)); }
+  if(entry){ await safeSet(stampKey(ds), JSON.stringify(entry)); }
+  else { await safeDelete(stampKey(ds)); }
+  if(topTab!=='month'){ if(entry) periodStampData[selectedKey] = entry; else delete periodStampData[selectedKey]; }
 }
 
 async function saveDay(){
@@ -1195,21 +1308,6 @@ window.addEventListener('online', ()=>{
   }
 });
 
-/* ---------- 월별 캘린더 좌우 스와이프로 달 이동 ---------- */
-let swipeX = null, swipeY = 0;
-mainArea.addEventListener('touchstart', e=>{
-  swipeX = (topTab==='month' && e.touches.length===1) ? e.touches[0].clientX : null;
-  if(swipeX!==null) swipeY = e.touches[0].clientY;
-}, {passive:true});
-mainArea.addEventListener('touchend', e=>{
-  if(swipeX===null) return;
-  const t = e.changedTouches[0];
-  const dx = t.clientX - swipeX, dy = t.clientY - swipeY;
-  swipeX = null;
-  if(Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)*1.5) return;
-  changeMonth(dx < 0 ? 1 : -1);
-});
-
 /* ---------- 당겨서 새로고침 ---------- */
 const pullIndicator = document.getElementById('pullIndicator');
 let pullStartY = 0, pullStartX = 0, pulling = false, pullDist = 0, refreshing = false;
@@ -1276,7 +1374,7 @@ async function init(){
   // Only migrate from data we trust to be current; a failed load leaves a possibly stale local cache.
   if(loaded) await migrateLegacyStamps();
   await loadBg();
-  await loadMonth();
+  renderAll();
 }
 init();
 
