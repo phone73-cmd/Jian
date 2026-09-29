@@ -369,6 +369,7 @@ function monthKey(d){ return `stamps:${d.getFullYear()}-${pad(d.getMonth()+1)}`;
 function goalKey(d){ return `goal:${d.getFullYear()}-${pad(d.getMonth()+1)}`; }
 function yearGoalKey(y){ return `yearGoal:${y}`; }
 function dateStr(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function nowTime(){ const d=new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; }
 
 /* ---------- 저장소 계층: localStorage 캐시 + (설정 시) Supabase 동기화 ---------- */
 let dbCache = {};
@@ -418,11 +419,11 @@ async function supabaseUpsert(key, value){
       body: JSON.stringify([{ app_id: sbConfig.appId, key, value, updated_at: new Date().toISOString() }])
     });
     if(!res.ok){ const d = await res.json().catch(()=>({})); throw new Error(d.message || ('HTTP '+res.status)); }
-    setSyncStatus('☁️ Supabase에 저장됨');
+    setSyncStatus(`☁️ 저장됨 (${nowTime()})`);
   }catch(e){
     console.error('Supabase 저장 실패', e);
     showSaveError('⚠️ Supabase 저장에 실패했어요 (' + (e.message||'') + ')');
-    setSyncStatus('⚠️ Supabase 동기화 실패 — 이 기기에는 저장됨');
+    setSyncStatus(`⚠️ 저장 실패 (${nowTime()}) — 이 기기에만 저장됨: ${e.message||''}`);
   }
 }
 
@@ -433,10 +434,10 @@ async function supabaseDeleteKey(key){
       method:'DELETE', headers: sbHeaders()
     });
     if(!res.ok) throw new Error('HTTP '+res.status);
-    setSyncStatus('☁️ Supabase에 저장됨');
+    setSyncStatus(`☁️ 저장됨 (${nowTime()})`);
   }catch(e){
     console.error('Supabase 삭제 실패', e);
-    setSyncStatus('⚠️ Supabase 동기화 실패 — 이 기기에는 저장됨');
+    setSyncStatus(`⚠️ 삭제 실패 (${nowTime()}) — 이 기기에만 반영됨: ${e.message||''}`);
   }
 }
 
@@ -491,8 +492,8 @@ function handleRemoteChange(payload){
 /* 앱 전체가 쓰는 저장 함수 — 항상 이 기기(localStorage)에는 즉시 저장되고,
    Supabase 연동이 설정돼 있으면 즉시 Supabase 테이블에도 동기화됩니다. */
 function safeGet(key){ return Object.prototype.hasOwnProperty.call(dbCache, key) ? dbCache[key] : null; }
-function safeSet(key,val){ dbCache[key]=val; persistLocalDB(); if(sbConfig) supabaseUpsert(key, val); return true; }
-function safeDelete(key){ delete dbCache[key]; persistLocalDB(); if(sbConfig) supabaseDeleteKey(key); }
+async function safeSet(key,val){ dbCache[key]=val; persistLocalDB(); if(sbConfig) await supabaseUpsert(key, val); return true; }
+async function safeDelete(key){ delete dbCache[key]; persistLocalDB(); if(sbConfig) await supabaseDeleteKey(key); }
 
 function showSaveError(msg){
   let banner = document.getElementById('saveErrorBanner');
@@ -913,8 +914,14 @@ async function saveDay(){
   if(!pendingSticker && !note) delete store[selectedKey];
   else store[selectedKey] = { e: pendingSticker?pendingSticker.e:null, color: pendingSticker?pendingSticker.color:null, note };
 
+  const saveBtn = document.getElementById('saveDayBtn');
+  const originalLabel = saveBtn.textContent;
+  if(sbConfig){ saveBtn.textContent = '저장 중...'; saveBtn.disabled = true; }
+
   if(topTab==='month'){ await saveMonth(); await loadYearGoalAndCount(); }
   else { await savePeriodStamps(activePeriodId); }
+
+  saveBtn.textContent = originalLabel; saveBtn.disabled = false;
 
   const stickerToAnimate = pendingSticker;
   const savedKey = selectedKey;
@@ -923,12 +930,15 @@ async function saveDay(){
   if(stickerToAnimate){ burstConfetti(stickerToAnimate.color); animateStampPop(savedKey); }
 }
 document.getElementById('saveDayBtn').addEventListener('click', saveDay);
-document.getElementById('removeStampBtn').addEventListener('click', async ()=>{
+document.getElementById('removeStampBtn').addEventListener('click', async function(){
   if(selectedKey==null) return;
   const store = topTab==='month' ? stampData : periodStampData;
   delete store[selectedKey];
+  const originalLabel = this.textContent;
+  if(sbConfig){ this.textContent = '지우는 중...'; this.disabled = true; }
   if(topTab==='month'){ await saveMonth(); await loadYearGoalAndCount(); }
   else { await savePeriodStamps(activePeriodId); }
+  this.textContent = originalLabel; this.disabled = false;
   closeSheet();
   renderAll();
 });
