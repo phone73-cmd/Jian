@@ -99,21 +99,20 @@
   .month-card{ position:relative; }
   .month-card .month-nav{ position:absolute; left:14px; right:14px; top:16px; margin:0; z-index:2; pointer-events:none; }
   .month-card .month-nav button{ pointer-events:auto; }
-  /* 이번 달이 아닌 달을 볼 때만 나타나는 "오늘" 버튼. 슬라이드되는 제목 옆에 고정. */
+  /* "오늘" 버튼: 연월 제목 아래 가운데에 고정. 이번 달을 보고 있을 때는 비활성. */
   .today-btn{
-    position:absolute; top:21px; left:calc(50% + 66px); z-index:2; height:26px; padding:0 10px; border-radius:13px;
+    position:absolute; top:54px; left:0; right:0; margin:0 auto; width:fit-content; z-index:2; height:24px; padding:0 12px; border-radius:12px;
     border:1.5px solid var(--grape); background:var(--sel-bg); color:var(--grape);
     font-family:'Jua',sans-serif; font-size:12px; line-height:1; cursor:pointer; transition:transform .12s ease;
   }
-  .today-btn[hidden]{ display:none; }
-  .today-btn:active{ transform:scale(0.94); }
-  @media (max-width:340px){ .today-btn{ left:calc(50% + 58px); padding:0 6px; font-size:11px; } }
+  .today-btn:not(:disabled):active{ transform:scale(0.94); }
+  .today-btn:disabled{ border-color:var(--line); background:transparent; color:var(--sub); opacity:.6; cursor:default; }
   .pager{ margin:0 -14px; }
   .pager.sliding{ overflow:hidden; }
   .pager .track{ display:flex; align-items:flex-start; }
   .pager.sliding .track{ will-change:transform; }
   .pager .page{ flex:0 0 100%; min-width:0; padding:0 14px; }
-  .page-title{ font-family:'Jua',sans-serif; font-weight:400; font-size:19px; margin:0 0 10px; height:36px; display:flex; align-items:center; justify-content:center; color:var(--ink); }
+  .page-title{ font-family:'Jua',sans-serif; font-weight:400; font-size:19px; margin:0 0 34px; height:36px; display:flex; align-items:center; justify-content:center; color:var(--ink); }
   .month-nav h2{ min-width:0; word-break:keep-all; overflow-wrap:anywhere; }
   .month-nav h2 span{ min-width:0; }
   .month-nav h2.editable{ display:flex; align-items:center; justify-content:center; gap:6px; }
@@ -999,7 +998,7 @@ function renderMonthView(){
         <button id="prevBtn" aria-label="이전 달">‹</button>
         <button id="nextBtn" aria-label="다음 달">›</button>
       </div>
-      <button class="today-btn" id="todayBtn" aria-label="이번 달로 돌아가기"${isCurrentMonthShown() ? ' hidden' : ''}>오늘</button>
+      <button class="today-btn" id="todayBtn" aria-label="이번 달로 돌아가기"${isCurrentMonthShown() ? ' disabled' : ''}>오늘</button>
     </div>`;
 
   document.getElementById('prevBtn').onclick = ()=> changeMonth(-1);
