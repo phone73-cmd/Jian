@@ -228,7 +228,8 @@
     width:100%; padding:10px; border-radius:14px; border:1.5px dashed var(--sub); background:transparent;
     color:var(--sub); font-family:'Gowun Dodum',sans-serif; font-size:13px; cursor:pointer;
   }
-  .confetti{ position:fixed; width:8px;height:8px; border-radius:2px; pointer-events:none; z-index:60; }
+  .heart-fx{ position:fixed; width:22px; height:22px; margin:-11px 0 0 -11px; pointer-events:none; z-index:60; will-change:transform,opacity; }
+  .heart-fx svg{ display:block; width:100%; height:100%; filter:drop-shadow(0 1px 1px rgba(0,0,0,0.18)); }
   .err-msg{ font-size:12px; color:var(--coral); margin-top:4px; min-height:14px; }
 
   .bg-preview{
@@ -254,7 +255,7 @@
     animation: pullSweep 1s linear infinite;
   }
   @keyframes pullSweep{ from{ background-position:-60% 0; } to{ background-position:160% 0; } }
-  #appVersion{ text-align:center; font-size:10px; color:var(--sub); margin-top:2px; opacity:.6; }
+  #appVersion{ text-align:right; padding-right:4px; font-size:10px; color:var(--sub); margin-top:2px; opacity:.6; }
 
   .cfg-sub{ font-size:12px; color:var(--sub); margin:-6px 0 4px 2px; }
   .cfg-title{ display:flex; align-items:center; gap:7px; font-family:'Jua',sans-serif; font-weight:400; font-size:15px; color:var(--ink); margin:18px 0 7px; }
@@ -1305,7 +1306,7 @@ async function saveDay(){
   const savedKey = selectedKey;
   closeSheet();
   renderAll();
-  if(stickerToAnimate){ burstConfetti(stickerToAnimate.color); animateStampPop(savedKey); }
+  if(stickerToAnimate){ burstHearts(stickerToAnimate.color, savedKey); animateStampPop(savedKey); }
 }
 document.getElementById('saveDayBtn').addEventListener('click', saveDay);
 document.getElementById('removeStampBtn').addEventListener('click', async function(){
@@ -1374,20 +1375,36 @@ document.getElementById('saveRenameBtn').addEventListener('click', async functio
   if(topTab==='period' && periodSub==='detail' && activePeriodId===p.id) renderPeriodDetail();
 });
 
-function burstConfetti(color){
-  const colors=[color,'#FFD166','#8067DC','#7FD1C0'];
-  for(let i=0;i<14;i++){
-    const c=document.createElement('div'); c.className='confetti'; c.style.background=colors[i%colors.length];
-    const x=window.innerWidth/2+(Math.random()*60-30), y=window.innerHeight/2+(Math.random()*60-30);
-    c.style.left=x+'px'; c.style.top=y+'px'; document.body.appendChild(c);
-    const angle=Math.random()*Math.PI*2, dist=60+Math.random()*90;
-    const dx=Math.cos(angle)*dist, dy=Math.sin(angle)*dist-40;
-    c.animate([
-      {transform:'translate(0,0) rotate(0deg)', opacity:1},
-      {transform:`translate(${dx}px, ${dy+120}px) rotate(${Math.random()*360}deg)`, opacity:0}
-    ], {duration:700+Math.random()*300, easing:'cubic-bezier(.2,.8,.3,1)'});
-    setTimeout(()=>c.remove(),1100);
-  }
+/* 도장이 찍힌 칸의 중심에서 하트가 위쪽 부채꼴로 솟아오른다. */
+const HEART_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 2.8 4.5 6.6 4.5c2 0 3.6 1.1 5.4 3 1.8-1.9 3.4-3 5.4-3 3.8 0 5.7 3.9 4.2 7.3C19.5 16.4 12 21 12 21z"/></svg>';
+function burstHearts(color, key){
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  requestAnimationFrame(()=>{
+    const cell = mainArea.querySelector(`[data-key="${key}"]`);
+    if(!cell) return;
+    const r = cell.getBoundingClientRect();
+    // 화면이 다시 그려지며 위로 10px 떠오르는 중이라, 그 이동분을 빼서 도장이 자리 잡을 위치를 기준으로 삼는다.
+    const shift = new DOMMatrix(getComputedStyle(mainArea).transform);
+    const cx = r.left + r.width/2 - shift.m41, cy = r.top + r.height/2 - shift.m42;
+    const colors = [color, '#FF6B8B', '#FF9EB5', color, '#FFB3C6'];
+    const N = 10;
+    for(let i=0;i<N;i++){
+      const h = document.createElement('div'); h.className = 'heart-fx';
+      h.style.left = cx+'px'; h.style.top = cy+'px'; h.style.color = colors[i%colors.length];
+      h.innerHTML = HEART_SVG;
+      document.body.appendChild(h);
+      const angle = (-90 + (i/(N-1)-0.5)*130 + (Math.random()*16-8)) * Math.PI/180;   // 위쪽 부채꼴
+      const dist = 46 + Math.random()*54;
+      const dx = Math.cos(angle)*dist, dy = Math.sin(angle)*dist - 14;
+      const sway = (Math.random()*12-6), rot = (Math.random()*50-25), sc = 0.7 + Math.random()*0.7;
+      const anim = h.animate([
+        {transform:'translate(0,0) scale(0.3) rotate(0deg)', opacity:0},
+        {transform:`translate(${dx*0.55+sway}px, ${dy*0.55}px) scale(${sc}) rotate(${rot*0.5}deg)`, opacity:1, offset:0.35},
+        {transform:`translate(${dx}px, ${dy-22}px) scale(${sc*1.1}) rotate(${rot}deg)`, opacity:0}
+      ], {duration:800+Math.random()*350, easing:'cubic-bezier(.2,.7,.3,1)', fill:'forwards'});
+      anim.onfinish = ()=> h.remove();
+    }
+  });
 }
 
 /* ---------- 앱 복귀 시 재연결: 모바일에서 화면을 끄거나 백그라운드로 보내면
