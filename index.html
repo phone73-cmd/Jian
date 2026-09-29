@@ -653,10 +653,28 @@ async function loadYearGoalAndCount(){
   yearGoal = stats.goal || 200;
   yearCount = Object.values(stats.counts || {}).reduce((a,b)=>a+b, 0);
 }
+/* 서버(연결돼 있으면)의 이 키 최신 값을 직접 조회한다. 다른 기기가 방금
+   저장한 값을 이 기기가 아직 못 받았을 수 있어서, 로컬 dbCache가 아니라
+   항상 서버에 직접 물어봐야 "덩어리 전체 덮어쓰기"로 다른 기기의 변경을
+   지우는 사고를 막을 수 있다. 연결 안 돼 있으면 null. */
+async function fetchServerBlob(key){
+  if(!sbConfig) return null;
+  try{
+    const res = await fetch(sbRestUrl(`app_data?app_id=eq.${encodeURIComponent(sbConfig.appId)}&key=eq.${encodeURIComponent(key)}&select=value`), {
+      headers: sbHeaders(), cache:'no-store'
+    });
+    if(!res.ok) return null;
+    const rows = await res.json();
+    return rows[0] ? JSON.parse(rows[0].value || '{}') : {};
+  }catch(e){ console.warn('서버 최신값 조회 실패, 로컬 데이터로 대체', e); return null; }
+}
+
 async function updateYearStatsForMonth(){
   const y = current.getFullYear(), mm = pad(current.getMonth()+1);
-  const raw = await safeGet(`yearStats:${y}`);
-  const stats = raw ? JSON.parse(raw) : { goal: 200, counts: {} };
+  const serverStats = await fetchServerBlob(`yearStats:${y}`);
+  const stats = serverStats || { goal: 200, counts: {} };
+  if(!stats.counts) stats.counts = {};
+  if(!stats.goal) stats.goal = 200;
   stats.counts[mm] = Object.values(stampData).filter(x=>x && x.e).length;
   await safeSet(`yearStats:${y}`, JSON.stringify(stats));
   yearGoal = stats.goal || 200;
@@ -677,22 +695,29 @@ async function loadPeriodData(id){
   if(raw) periodStampData = JSON.parse(raw);
   renderAll();
 }
-async function saveMonth(){ await safeSet(monthKey(current), JSON.stringify(stampData)); await updateYearStatsForMonth(); }
 async function saveMonthGoal(val){ monthGoal = val; await safeSet(goalKey(current), String(val)); }
 async function saveYearGoal(val){
   const y = current.getFullYear();
-  const raw = await safeGet(`yearStats:${y}`);
-  const stats = raw ? JSON.parse(raw) : { goal: 200, counts: {} };
+  const serverStats = await fetchServerBlob(`yearStats:${y}`);
+  const stats = serverStats || { goal: 200, counts: {} };
+  if(!stats.counts) stats.counts = {};
   stats.goal = val;
   await safeSet(`yearStats:${y}`, JSON.stringify(stats));
   yearGoal = val;
 }
-async function savePeriodStamps(id){
-  await safeSet(`periodStamps:${id}`, JSON.stringify(periodStampData));
-  const p = periods.find(x=>x.id===id);
-  if(p){ p.count = Object.values(periodStampData).filter(x=>x && x.e).length; await savePeriodsList(); }
-}
 async function savePeriodsList(){ await safeSet('periods:list', JSON.stringify(periods)); }
+
+/* 도장 한 칸(하루)만 바꿔서 저장한다. 로컬에 들고 있던 그 달/기간 전체
+   객체를 그대로 덮어쓰지 않고, 서버의 최신 전체 값을 다시 받아와 그 위에
+   이번에 바뀐 하루만 반영한다 — 다른 기기가 같은 달의 다른 날짜에 먼저
+   찍어둔 도장을 통째로 지워버리는 사고를 막기 위함. */
+async function saveStampDay(key, dayKey, newEntry){
+  const serverObj = await fetchServerBlob(key);
+  const obj = serverObj || (topTab==='month' ? {...stampData} : {...periodStampData});
+  if(newEntry===null) delete obj[dayKey]; else obj[dayKey] = newEntry;
+  await safeSet(key, JSON.stringify(obj));
+  return obj;
+}
 
 async function refreshData(){
   if(sbConfig){
@@ -930,16 +955,21 @@ function buildStickerGrid(){
 async function saveDay(){
   if(selectedKey==null) return;
   const note = noteInput.value.trim();
-  const store = topTab==='month' ? stampData : periodStampData;
-  if(!pendingSticker && !note) delete store[selectedKey];
-  else store[selectedKey] = { e: pendingSticker?pendingSticker.e:null, color: pendingSticker?pendingSticker.color:null, note };
+  const newEntry = (!pendingSticker && !note) ? null : { e: pendingSticker?pendingSticker.e:null, color: pendingSticker?pendingSticker.color:null, note };
 
   const saveBtn = document.getElementById('saveDayBtn');
   const originalLabel = saveBtn.textContent;
   if(sbConfig){ saveBtn.textContent = '저장 중...'; saveBtn.disabled = true; }
 
-  if(topTab==='month'){ await saveMonth(); await loadYearGoalAndCount(); }
-  else { await savePeriodStamps(activePeriodId); }
+  if(topTab==='month'){
+    stampData = await saveStampDay(monthKey(current), selectedKey, newEntry);
+    await updateYearStatsForMonth();
+    await loadYearGoalAndCount();
+  } else {
+    periodStampData = await saveStampDay(`periodStamps:${activePeriodId}`, selectedKey, newEntry);
+    const p = periods.find(x=>x.id===activePeriodId);
+    if(p){ p.count = Object.values(periodStampData).filter(x=>x && x.e).length; await savePeriodsList(); }
+  }
 
   saveBtn.textContent = originalLabel; saveBtn.disabled = false;
 
@@ -952,12 +982,19 @@ async function saveDay(){
 document.getElementById('saveDayBtn').addEventListener('click', saveDay);
 document.getElementById('removeStampBtn').addEventListener('click', async function(){
   if(selectedKey==null) return;
-  const store = topTab==='month' ? stampData : periodStampData;
-  delete store[selectedKey];
   const originalLabel = this.textContent;
   if(sbConfig){ this.textContent = '지우는 중...'; this.disabled = true; }
-  if(topTab==='month'){ await saveMonth(); await loadYearGoalAndCount(); }
-  else { await savePeriodStamps(activePeriodId); }
+
+  if(topTab==='month'){
+    stampData = await saveStampDay(monthKey(current), selectedKey, null);
+    await updateYearStatsForMonth();
+    await loadYearGoalAndCount();
+  } else {
+    periodStampData = await saveStampDay(`periodStamps:${activePeriodId}`, selectedKey, null);
+    const p = periods.find(x=>x.id===activePeriodId);
+    if(p){ p.count = Object.values(periodStampData).filter(x=>x && x.e).length; await savePeriodsList(); }
+  }
+
   this.textContent = originalLabel; this.disabled = false;
   closeSheet();
   renderAll();
