@@ -220,15 +220,18 @@
   .file-btn input{ display:none; }
 
   #pullIndicator{
-    position:fixed; top:calc(env(safe-area-inset-top, 0px) + 12px); left:50%; width:28px; height:28px; margin-left:-14px;
+    position:fixed; top:env(safe-area-inset-top, 0px); left:0; width:0; height:3px;
+    background:var(--grape); border-radius:0 3px 3px 0;
     opacity:0; z-index:100; pointer-events:none;
-    transition: transform .25s cubic-bezier(.2,.8,.3,1), opacity .25s ease;
+    transition: opacity .25s ease;
   }
-  #pullIndicator svg{ display:block; }
-  #pullIndicator .trk{ stroke:var(--line); }
-  #pullIndicator .arc{ stroke:var(--grape); transition:stroke-dashoffset .1s linear; }
-  #pullIndicator.refreshing svg{ animation: pullSpin .8s linear infinite; }
-  @keyframes pullSpin{ to{ transform:rotate(360deg); } }
+  #pullIndicator.refreshing{
+    width:100% !important; border-radius:0;
+    background:linear-gradient(90deg, transparent, var(--grape), transparent) no-repeat;
+    background-size:45% 100%;
+    animation: pullSweep 1s linear infinite;
+  }
+  @keyframes pullSweep{ from{ background-position:-60% 0; } to{ background-position:160% 0; } }
   #appVersion{ text-align:center; font-size:10px; color:var(--sub); margin-top:2px; opacity:.6; }
 
   .cfg-sub{ font-size:12px; color:var(--sub); margin:-6px 0 4px 2px; }
@@ -258,12 +261,7 @@
 <body>
 <div id="bgLayer"></div>
 <div id="bgTint"></div>
-<div id="pullIndicator" aria-hidden="true">
-  <svg viewBox="0 0 28 28" width="28" height="28">
-    <circle class="trk" cx="14" cy="14" r="11" fill="none" stroke-width="2.5"/>
-    <circle class="arc" cx="14" cy="14" r="11" fill="none" stroke-width="2.5" stroke-linecap="round" transform="rotate(-90 14 14)"/>
-  </svg>
-</div>
+<div id="pullIndicator" aria-hidden="true"></div>
 <div class="app">
   <div class="title-row">
     <h1>🌟 지안이 칭찬스티커 🌟</h1>
@@ -1198,19 +1196,8 @@ window.addEventListener('online', ()=>{
 
 /* ---------- 당겨서 새로고침 ---------- */
 const pullIndicator = document.getElementById('pullIndicator');
-const pullArc = pullIndicator.querySelector('.arc');
-const appEl = document.querySelector('.app');
 let pullStartY = 0, pulling = false, pullDist = 0, refreshing = false;
-const PULL_THRESHOLD = 70, PULL_MAX = 100, PULL_GAP = 44;
-const PULL_EASE = 'cubic-bezier(.2,.8,.3,1)';
-// .app already animates `transform` on load, so the pull offset uses the separate `translate` property.
-function setPullGap(px, animate){
-  appEl.style.transition = animate ? `translate .25s ${PULL_EASE}` : 'none';
-  appEl.style.translate = `0 ${px}px`;
-}
-const PULL_RING = 2 * Math.PI * 11;
-pullArc.style.strokeDasharray = PULL_RING;
-pullArc.style.strokeDashoffset = PULL_RING;
+const PULL_THRESHOLD = 70, PULL_MAX = 100;
 
 document.addEventListener('touchstart', e=>{
   if(refreshing || document.querySelector('.overlay.show')) return;
@@ -1225,9 +1212,8 @@ document.addEventListener('touchmove', e=>{
   pullDist = Math.min(dy*0.5, PULL_MAX);
   const progress = Math.min(1, pullDist/PULL_THRESHOLD);
   pullIndicator.style.transition = 'none';
-  pullIndicator.style.opacity = Math.min(1, progress*1.4);
-  pullArc.style.strokeDashoffset = PULL_RING * (1 - progress*0.85);
-  setPullGap(progress*PULL_GAP, false);
+  pullIndicator.style.opacity = '1';
+  pullIndicator.style.width = `${progress*100}%`;
   if(dy>6) e.preventDefault();
 }, {passive:false});
 
@@ -1236,24 +1222,19 @@ document.addEventListener('touchend', ()=>{
   pulling = false;
   pullIndicator.style.transition = 'opacity .25s ease';
   if(pullDist >= PULL_THRESHOLD){ startPullRefresh(); }
-  else{
-    pullIndicator.style.opacity = '0';
-    setPullGap(0, true);
-  }
+  else{ pullIndicator.style.opacity = '0'; }
   pullDist = 0;
 });
 
 async function startPullRefresh(){
   refreshing = true;
   pullIndicator.style.opacity = '1';
-  pullArc.style.strokeDashoffset = PULL_RING * 0.72;
   pullIndicator.classList.add('refreshing');
-  setPullGap(PULL_GAP, true);
   const minWait = new Promise(r=>setTimeout(r, 500));
   await Promise.all([refreshData(), minWait]);
-  pullIndicator.classList.remove('refreshing');
   pullIndicator.style.opacity = '0';
-  setPullGap(0, true);
+  await new Promise(r=>setTimeout(r, 250));
+  pullIndicator.classList.remove('refreshing');
   refreshing = false;
 }
 
