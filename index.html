@@ -46,7 +46,9 @@
     --shadow: 0 6px 0 rgba(0,0,0,0.25);
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
+  html,body{margin:0;padding:0; overscroll-behavior-x:none;}
+  /* Horizontal swipes on the calendar change the month; keep the browser from treating them as back/forward. */
+  #mainArea{ touch-action:pan-y; }
   #bgLayer{
     position:fixed; inset:0; z-index:-2;
     background:
@@ -278,7 +280,7 @@
   <div id="mainArea"></div>
 
   <div class="footer-note">칸을 톡 누르면 귀여운 캐릭터 도장을 고르고 메모도 남길 수 있어요</div>
-  <div class="footer-note">화면을 아래로 당기면 새로고침할 수 있어요</div>
+  <div class="footer-note">화면을 아래로 당기면 새로고침, 캘린더를 좌우로 밀면 달이 바뀌어요</div>
   <div id="appVersion"></div>
 </div>
 
@@ -390,7 +392,7 @@ let activePeriodId = null;
 let periods = [];
 let stampData = {};
 let periodStampData = {};
-let monthGoal = 20, yearGoal = 200, yearCount = 0;
+let monthGoal = 20;
 let selectedKey = null, pendingSticker = null;
 let navDirection = null; // 'left' | 'right' | null — set right before a render that should slide
 
@@ -435,9 +437,8 @@ const cfgOverlay = document.getElementById('cfgOverlay');
 const bgPreview = document.getElementById('bgPreview');
 
 function pad(n){ return String(n).padStart(2,'0'); }
-function monthKey(d){ return `stamps:${d.getFullYear()}-${pad(d.getMonth()+1)}`; }
+function stampKey(ds){ return `stamp:${ds}`; }
 function goalKey(d){ return `goal:${d.getFullYear()}-${pad(d.getMonth()+1)}`; }
-function yearGoalKey(y){ return `yearGoal:${y}`; }
 function dateStr(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
 function nowTime(){ const d=new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; }
 
@@ -481,34 +482,41 @@ async function supabaseLoadAll(){
   }catch(e){ return {ok:false, error: e.message || String(e)}; }
 }
 
-async function supabaseUpsert(key, value){
-  if(!sbConfig) return;
+/* entries: [[key, value], ...] — 한 번의 요청으로 여러 행을 저장한다. 성공하면 true. */
+async function supabaseUpsertRows(entries){
+  if(!sbConfig) return true;
   try{
+    const now = new Date().toISOString();
     const res = await fetch(sbRestUrl('app_data?on_conflict=app_id,key'), {
       method:'POST',
       headers:{ ...sbHeaders(), 'Prefer':'resolution=merge-duplicates,return=minimal' },
-      body: JSON.stringify([{ app_id: sbConfig.appId, key, value, updated_at: new Date().toISOString() }])
+      body: JSON.stringify(entries.map(([key, value])=>({ app_id: sbConfig.appId, key, value, updated_at: now })))
     });
     if(!res.ok){ const d = await res.json().catch(()=>({})); throw new Error(d.message || ('HTTP '+res.status)); }
     setSyncStatus(`☁️ 저장됨 (${nowTime()})`);
+    return true;
   }catch(e){
     console.error('Supabase 저장 실패', e);
     showSaveError('⚠️ Supabase 저장에 실패했어요 (' + (e.message||'') + ')');
     setSyncStatus(`⚠️ 저장 실패 (${nowTime()}) — 이 기기에만 저장됨: ${e.message||''}`);
+    return false;
   }
 }
+function supabaseUpsert(key, value){ return supabaseUpsertRows([[key, value]]); }
 
 async function supabaseDeleteKey(key){
-  if(!sbConfig) return;
+  if(!sbConfig) return true;
   try{
     const res = await fetch(sbRestUrl(`app_data?app_id=eq.${encodeURIComponent(sbConfig.appId)}&key=eq.${encodeURIComponent(key)}`), {
       method:'DELETE', headers: sbHeaders()
     });
     if(!res.ok) throw new Error('HTTP '+res.status);
     setSyncStatus(`☁️ 저장됨 (${nowTime()})`);
+    return true;
   }catch(e){
     console.error('Supabase 삭제 실패', e);
     setSyncStatus(`⚠️ 삭제 실패 (${nowTime()}) — 이 기기에만 반영됨: ${e.message||''}`);
+    return false;
   }
 }
 
@@ -548,22 +556,30 @@ function reconnectRealtime(){
   disconnectRealtime();
   connectRealtime();
 }
+let remoteRenderTimer = null;
 function handleRemoteChange(payload){
   const row = payload.eventType==='DELETE' ? payload.old : payload.new;
   if(!row) return;
+  // Supabase can't filter DELETE events by app_id, so skip rows that belong to another family.
+  if(row.app_id && sbConfig && row.app_id !== sbConfig.appId) return;
   if(payload.eventType==='DELETE') delete dbCache[row.key];
   else dbCache[row.key] = row.value;
   persistLocalDB();
-  if(topTab==='month') loadMonth();
-  else if(periodSub==='list') loadPeriods().then(renderAll);
-  else if(activePeriodId) loadPeriodData(activePeriodId);
+  // A batch of saves arrives as many events; redraw once after they settle.
+  clearTimeout(remoteRenderTimer);
+  remoteRenderTimer = setTimeout(reloadCurrentView, 150);
+}
+async function reloadCurrentView(){
+  if(topTab==='month') await loadMonth();
+  else if(periodSub==='list'){ await loadPeriods(); renderAll(); }
+  else if(activePeriodId) await loadPeriodData(activePeriodId);
 }
 
 /* 앱 전체가 쓰는 저장 함수 — 항상 이 기기(localStorage)에는 즉시 저장되고,
    Supabase 연동이 설정돼 있으면 즉시 Supabase 테이블에도 동기화됩니다. */
 function safeGet(key){ return Object.prototype.hasOwnProperty.call(dbCache, key) ? dbCache[key] : null; }
-async function safeSet(key,val){ dbCache[key]=val; persistLocalDB(); if(sbConfig) await supabaseUpsert(key, val); return true; }
-async function safeDelete(key){ delete dbCache[key]; persistLocalDB(); if(sbConfig) await supabaseDeleteKey(key); }
+async function safeSet(key,val){ dbCache[key]=val; persistLocalDB(); return sbConfig ? supabaseUpsert(key, val) : true; }
+async function safeDelete(key){ delete dbCache[key]; persistLocalDB(); return sbConfig ? supabaseDeleteKey(key) : true; }
 
 function showSaveError(msg){
   let banner = document.getElementById('saveErrorBanner');
@@ -621,6 +637,7 @@ document.getElementById('connectSbBtn').addEventListener('click', async ()=>{
   saveSbConfigToStorage(testConfig);
   sbOverlay.classList.remove('show');
   setSyncStatus('☁️ Supabase 연동됨');
+  await migrateLegacyStamps();
   await connectRealtime();
   await loadMonth();
 });
@@ -778,88 +795,76 @@ async function loadPeriods(){
   const raw = await safeGet('periods:list');
   periods = raw ? JSON.parse(raw) : [];
 }
-async function loadYearGoalAndCount(){
-  const y = current.getFullYear();
-  const raw = await safeGet(`yearStats:${y}`);
-  const stats = raw ? JSON.parse(raw) : { goal: 200, counts: {} };
-  yearGoal = stats.goal || 200;
-  yearCount = Object.values(stats.counts || {}).reduce((a,b)=>a+b, 0);
+/* 도장은 하루에 한 행(stamp:YYYY-MM-DD)으로 저장하고, 월별·목표기간 캘린더가 같이 읽는다.
+   하루 단위라서 여러 기기가 서로 다른 날짜에 찍어도 서로 덮어쓰지 않는다. */
+function readStamp(ds){
+  const raw = safeGet(stampKey(ds));
+  if(!raw) return null;
+  try{ return JSON.parse(raw); }catch(e){ return null; }
 }
-/* 서버(연결돼 있으면)의 이 키 최신 값을 직접 조회한다. 다른 기기가 방금
-   저장한 값을 이 기기가 아직 못 받았을 수 있어서, 로컬 dbCache가 아니라
-   항상 서버에 직접 물어봐야 "덩어리 전체 덮어쓰기"로 다른 기기의 변경을
-   지우는 사고를 막을 수 있다. 연결 안 돼 있으면 null. */
-async function fetchServerBlob(key){
-  if(!sbConfig) return null;
-  try{
-    const res = await fetch(sbRestUrl(`app_data?app_id=eq.${encodeURIComponent(sbConfig.appId)}&key=eq.${encodeURIComponent(key)}&select=value`), {
-      headers: sbHeaders(), cache:'no-store'
-    });
-    if(!res.ok) return null;
-    const rows = await res.json();
-    return rows[0] ? JSON.parse(rows[0].value || '{}') : {};
-  }catch(e){ console.warn('서버 최신값 조회 실패, 로컬 데이터로 대체', e); return null; }
+function periodDates(p){
+  const out = [];
+  const end = new Date(p.end+'T00:00:00');
+  for(const d = new Date(p.start+'T00:00:00'); d <= end; d.setDate(d.getDate()+1)) out.push(dateStr(d));
+  return out;
+}
+function countStampsInPeriod(p){
+  return periodDates(p).filter(ds=>{ const entry = readStamp(ds); return entry && entry.e; }).length;
 }
 
-async function updateYearStatsForMonth(){
-  const y = current.getFullYear(), mm = pad(current.getMonth()+1);
-  const serverStats = await fetchServerBlob(`yearStats:${y}`);
-  const stats = serverStats || { goal: 200, counts: {} };
-  if(!stats.counts) stats.counts = {};
-  if(!stats.goal) stats.goal = 200;
-  stats.counts[mm] = Object.values(stampData).filter(x=>x && x.e).length;
-  await safeSet(`yearStats:${y}`, JSON.stringify(stats));
-  yearGoal = stats.goal || 200;
-  yearCount = Object.values(stats.counts).reduce((a,b)=>a+b, 0);
+/* 예전 버전은 월별(stamps:YYYY-MM)과 목표기간(periodStamps:<id>) 도장을 한 덩어리씩 따로 저장했다.
+   하루 단위로 옮기고, 같은 날이 겹치면 월별 쪽을 남긴다. 이미 하루 단위 값이 있으면 그걸 우선한다.
+   서버 저장이 실패하면 옛 데이터를 지우지 않아서 다음 실행 때 다시 시도한다. */
+async function migrateLegacyStamps(){
+  const legacyKeys = Object.keys(dbCache).filter(k=>/^stamps:\d{4}-\d{2}$/.test(k) || k.startsWith('periodStamps:'));
+  if(!legacyKeys.length) return;
+  const readBlob = k=>{ try{ return JSON.parse(dbCache[k] || '{}') || {}; }catch(e){ return {}; } };
+  const hasContent = entry=> entry && (entry.e || entry.note);
+  const merged = {};
+  legacyKeys.filter(k=>k.startsWith('periodStamps:')).forEach(k=>{
+    Object.entries(readBlob(k)).forEach(([ds, entry])=>{ if(hasContent(entry) && !merged[ds]) merged[ds] = entry; });
+  });
+  legacyKeys.filter(k=>k.startsWith('stamps:')).forEach(k=>{
+    const ym = k.slice('stamps:'.length);
+    Object.entries(readBlob(k)).forEach(([day, entry])=>{ if(hasContent(entry)) merged[`${ym}-${pad(Number(day))}`] = entry; });
+  });
+  const entries = Object.entries(merged)
+    .filter(([ds])=> !Object.prototype.hasOwnProperty.call(dbCache, stampKey(ds)))
+    .map(([ds, entry])=>[stampKey(ds), JSON.stringify(entry)]);
+  entries.forEach(([k, v])=>{ dbCache[k] = v; });
+  persistLocalDB();
+  if(entries.length && !(await supabaseUpsertRows(entries))) return;
+  for(const k of legacyKeys){ await safeDelete(k); }
 }
+
 async function loadMonth(){
-  stampData = {}; monthGoal = 20;
-  const raw = await safeGet(monthKey(current));
-  if(raw) stampData = JSON.parse(raw);
-  const g = await safeGet(goalKey(current));
-  if(g) monthGoal = parseInt(g) || 20;
-  await loadYearGoalAndCount();
+  const y = current.getFullYear(), m = current.getMonth();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  stampData = {};
+  for(let day=1; day<=daysInMonth; day++){
+    const entry = readStamp(dateStr(new Date(y, m, day)));
+    if(entry) stampData[day] = entry;
+  }
+  monthGoal = parseInt(safeGet(goalKey(current))) || 20;
   renderAll();
 }
 async function loadPeriodData(id){
   periodStampData = {};
-  const raw = await safeGet(`periodStamps:${id}`);
-  if(raw) periodStampData = JSON.parse(raw);
+  const p = periods.find(x=>x.id===id);
+  if(p) periodDates(p).forEach(ds=>{ const entry = readStamp(ds); if(entry) periodStampData[ds] = entry; });
   renderAll();
 }
 async function saveMonthGoal(val){ monthGoal = val; await safeSet(goalKey(current), String(val)); }
-async function saveYearGoal(val){
-  const y = current.getFullYear();
-  const serverStats = await fetchServerBlob(`yearStats:${y}`);
-  const stats = serverStats || { goal: 200, counts: {} };
-  if(!stats.counts) stats.counts = {};
-  stats.goal = val;
-  await safeSet(`yearStats:${y}`, JSON.stringify(stats));
-  yearGoal = val;
-}
 async function savePeriodsList(){ await safeSet('periods:list', JSON.stringify(periods)); }
-
-/* 도장 한 칸(하루)만 바꿔서 저장한다. 로컬에 들고 있던 그 달/기간 전체
-   객체를 그대로 덮어쓰지 않고, 서버의 최신 전체 값을 다시 받아와 그 위에
-   이번에 바뀐 하루만 반영한다 — 다른 기기가 같은 달의 다른 날짜에 먼저
-   찍어둔 도장을 통째로 지워버리는 사고를 막기 위함. */
-async function saveStampDay(key, dayKey, newEntry){
-  const serverObj = await fetchServerBlob(key);
-  const obj = serverObj || (topTab==='month' ? {...stampData} : {...periodStampData});
-  if(newEntry===null) delete obj[dayKey]; else obj[dayKey] = newEntry;
-  await safeSet(key, JSON.stringify(obj));
-  return obj;
-}
 
 async function refreshData(){
   if(sbConfig){
     setSyncStatus('☁️ 새로고침 중...');
     const result = await supabaseLoadAll();
     setSyncStatus(result.ok ? '☁️ Supabase 연동됨' : '⚠️ Supabase 연결 실패 — 이 기기 저장 데이터로 표시 중');
+    if(result.ok) await migrateLegacyStamps();
   }
-  if(topTab==='month'){ await loadMonth(); }
-  else if(periodSub==='list'){ await loadPeriods(); renderAll(); }
-  else if(activePeriodId){ await loadPeriodData(activePeriodId); }
+  await reloadCurrentView();
 }
 
 /* ---------- 탭 ---------- */
@@ -906,6 +911,12 @@ function progressBlock(id, titleText, count, goal, msg){
     </div>`;
 }
 
+function changeMonth(delta){
+  navDirection = delta > 0 ? 'left' : 'right';
+  current.setMonth(current.getMonth() + delta);
+  loadMonth();
+}
+
 function renderMonthView(){
   const y = current.getFullYear(), m = current.getMonth();
   const monthCount = Object.values(stampData).filter(v=>v && v.e).length;
@@ -918,15 +929,13 @@ function renderMonthView(){
         <button id="nextBtn">›</button>
       </div>
       ${progressBlock('month','🗓️ 이번 달 목표', monthCount, monthGoal, progressMsgText(monthCount, monthGoal, '지안이'))}
-      ${progressBlock('year','🏆 '+y+'년 연간 목표', yearCount, yearGoal, progressMsgText(yearCount, yearGoal, '올해'))}
       <div class="weekdays"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
       <div class="grid" id="grid"></div>
     </div>`;
 
-  document.getElementById('prevBtn').onclick = ()=>{ navDirection='right'; current.setMonth(current.getMonth()-1); loadMonth(); };
-  document.getElementById('nextBtn').onclick = ()=>{ navDirection='left'; current.setMonth(current.getMonth()+1); loadMonth(); };
+  document.getElementById('prevBtn').onclick = ()=> changeMonth(-1);
+  document.getElementById('nextBtn').onclick = ()=> changeMonth(1);
   mainArea.querySelector('[data-goal-id="month"]').addEventListener('change', e=> saveMonthGoal(parseInt(e.target.value)||20).then(renderMonthView));
-  mainArea.querySelector('[data-goal-id="year"]').addEventListener('change', e=> saveYearGoal(parseInt(e.target.value)||200).then(renderMonthView));
 
   const grid = document.getElementById('grid');
   const firstDay = new Date(y,m,1).getDay();
@@ -957,7 +966,7 @@ function renderPeriodList(){
     cardsHtml = `<div class="empty-msg">아직 만든 목표기간이 없어요.<br>아래에서 새로 만들어보세요!</div>`;
   } else {
     cardsHtml = periods.map(p=>{
-      const count = p.count || 0;
+      const count = countStampsInPeriod(p);
       const pct = Math.min(100, Math.round((count/p.goal)*100));
       return `
         <div class="period-card" data-id="${p.id}">
@@ -1084,6 +1093,14 @@ function buildStickerGrid(){
     stickerGrid.appendChild(b);
   });
 }
+/* selectedKey는 월별 화면에선 날짜 숫자, 목표기간 화면에선 'YYYY-MM-DD'. 어느 쪽이든 같은 하루 행에 저장한다. */
+async function saveSelectedDay(entry){
+  const ds = topTab==='month' ? dateStr(new Date(current.getFullYear(), current.getMonth(), selectedKey)) : selectedKey;
+  const store = topTab==='month' ? stampData : periodStampData;
+  if(entry){ store[selectedKey] = entry; await safeSet(stampKey(ds), JSON.stringify(entry)); }
+  else { delete store[selectedKey]; await safeDelete(stampKey(ds)); }
+}
+
 async function saveDay(){
   if(selectedKey==null) return;
   const note = noteInput.value.trim();
@@ -1093,15 +1110,7 @@ async function saveDay(){
   const originalLabel = saveBtn.textContent;
   if(sbConfig){ saveBtn.textContent = '저장 중...'; saveBtn.disabled = true; }
 
-  if(topTab==='month'){
-    stampData = await saveStampDay(monthKey(current), selectedKey, newEntry);
-    await updateYearStatsForMonth();
-    await loadYearGoalAndCount();
-  } else {
-    periodStampData = await saveStampDay(`periodStamps:${activePeriodId}`, selectedKey, newEntry);
-    const p = periods.find(x=>x.id===activePeriodId);
-    if(p){ p.count = Object.values(periodStampData).filter(x=>x && x.e).length; await savePeriodsList(); }
-  }
+  await saveSelectedDay(newEntry);
 
   saveBtn.textContent = originalLabel; saveBtn.disabled = false;
 
@@ -1117,15 +1126,7 @@ document.getElementById('removeStampBtn').addEventListener('click', async functi
   const originalLabel = this.textContent;
   if(sbConfig){ this.textContent = '지우는 중...'; this.disabled = true; }
 
-  if(topTab==='month'){
-    stampData = await saveStampDay(monthKey(current), selectedKey, null);
-    await updateYearStatsForMonth();
-    await loadYearGoalAndCount();
-  } else {
-    periodStampData = await saveStampDay(`periodStamps:${activePeriodId}`, selectedKey, null);
-    const p = periods.find(x=>x.id===activePeriodId);
-    if(p){ p.count = Object.values(periodStampData).filter(x=>x && x.e).length; await savePeriodsList(); }
-  }
+  await saveSelectedDay(null);
 
   this.textContent = originalLabel; this.disabled = false;
   closeSheet();
@@ -1194,20 +1195,41 @@ window.addEventListener('online', ()=>{
   }
 });
 
+/* ---------- 월별 캘린더 좌우 스와이프로 달 이동 ---------- */
+let swipeX = null, swipeY = 0;
+mainArea.addEventListener('touchstart', e=>{
+  swipeX = (topTab==='month' && e.touches.length===1) ? e.touches[0].clientX : null;
+  if(swipeX!==null) swipeY = e.touches[0].clientY;
+}, {passive:true});
+mainArea.addEventListener('touchend', e=>{
+  if(swipeX===null) return;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - swipeX, dy = t.clientY - swipeY;
+  swipeX = null;
+  if(Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)*1.5) return;
+  changeMonth(dx < 0 ? 1 : -1);
+});
+
 /* ---------- 당겨서 새로고침 ---------- */
 const pullIndicator = document.getElementById('pullIndicator');
-let pullStartY = 0, pulling = false, pullDist = 0, refreshing = false;
+let pullStartY = 0, pullStartX = 0, pulling = false, pullDist = 0, refreshing = false;
 const PULL_THRESHOLD = 70, PULL_MAX = 100;
 
 document.addEventListener('touchstart', e=>{
   if(refreshing || document.querySelector('.overlay.show')) return;
-  if(window.scrollY<=0){ pullStartY = e.touches[0].clientY; pulling = true; }
+  if(window.scrollY<=0){ pullStartY = e.touches[0].clientY; pullStartX = e.touches[0].clientX; pulling = true; }
 }, {passive:true});
 
 document.addEventListener('touchmove', e=>{
   if(!pulling || refreshing) return;
   if(document.querySelector('.overlay.show')){ pulling=false; return; }
   const dy = e.touches[0].clientY - pullStartY;
+  const dx = e.touches[0].clientX - pullStartX;
+  if(Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)){
+    // Sideways finger movement is a month swipe, not a pull.
+    pulling = false; pullDist = 0; pullIndicator.style.opacity = '0';
+    return;
+  }
   if(dy<=0 || window.scrollY>0){ return; }
   pullDist = Math.min(dy*0.5, PULL_MAX);
   const progress = Math.min(1, pullDist/PULL_THRESHOLD);
@@ -1243,12 +1265,16 @@ async function init(){
   document.getElementById('appVersion').textContent = 'v' + APP_VERSION;
   loadLocalDB();
   sbConfig = loadSbConfig();
+  let loaded = !sbConfig;
   if(sbConfig){
     setSyncStatus('☁️ Supabase에서 불러오는 중...');
     const result = await supabaseLoadAll();
+    loaded = result.ok;
     if(result.ok){ setSyncStatus('☁️ Supabase 연동됨'); connectRealtime(); }
     else { setSyncStatus('⚠️ Supabase 연결 실패 — 이 기기 저장 데이터로 표시 중'); }
   }
+  // Only migrate from data we trust to be current; a failed load leaves a possibly stale local cache.
+  if(loaded) await migrateLegacyStamps();
   await loadBg();
   await loadMonth();
 }
