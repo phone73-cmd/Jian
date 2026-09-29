@@ -67,7 +67,6 @@
   @keyframes fadeSlideIn{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:translateY(0); } }
   .title-row{ text-align:center; margin-bottom:14px; position:relative; }
   .title-row h1{ font-family:'Jua',sans-serif; font-weight:400; font-size:26px; color:var(--grape); margin:0 0 2px; letter-spacing:-0.5px; }
-  .title-row p{ margin:0; font-size:13px; color:var(--sub); }
   .settings-btn{
     position:absolute; right:0; top:0; width:38px; height:38px; border-radius:50%;
     border:none; background:var(--paper); box-shadow:0 3px 0 rgba(0,0,0,0.06); font-size:19px; cursor:pointer;
@@ -216,7 +215,6 @@
     color:var(--sub); font-family:'Gowun Dodum',sans-serif; font-size:13px; cursor:pointer;
   }
   .confetti{ position:fixed; width:8px;height:8px; border-radius:2px; pointer-events:none; z-index:60; }
-  .footer-note{ text-align:center; font-size:11px; color:var(--sub); margin-top:2px; opacity:.8; }
   .err-msg{ font-size:12px; color:var(--coral); margin-top:4px; min-height:14px; }
 
   .bg-preview{
@@ -247,13 +245,16 @@
   .cfg-sub{ font-size:12px; color:var(--sub); margin:-6px 0 4px 2px; }
   .cfg-title{ display:flex; align-items:center; gap:7px; font-family:'Jua',sans-serif; font-weight:400; font-size:15px; color:var(--ink); margin:18px 0 7px; }
   .cfg-title::before{ content:''; width:4px; height:16px; border-radius:4px; background:var(--grape); flex:none; }
-  .cfg-desc{ font-size:12px; color:var(--sub); margin:0 0 8px 2px; line-height:1.5; }
-  .cfg-opt{
-    display:flex; align-items:center; gap:10px; margin:5px 0; padding:10px 12px; border:1.5px solid var(--line);
-    border-radius:13px; background:var(--cell); cursor:pointer; font-size:14px; color:var(--ink); transition:border-color .15s ease, background-color .15s ease;
+  .seg{ display:flex; gap:8px; }
+  .seg-opt{ position:relative; flex:1; min-width:0; }
+  .seg-opt input{ position:absolute; inset:0; width:100%; height:100%; margin:0; opacity:0; cursor:pointer; }
+  .seg-opt span{
+    display:block; padding:10px 6px; text-align:center; font-size:14px; color:var(--ink);
+    border:1.5px solid var(--line); border-radius:13px; background:var(--cell);
+    transition:border-color .15s ease, background-color .15s ease, color .15s ease;
   }
-  .cfg-opt:has(input:checked){ border-color:var(--grape); background:var(--sel-bg); }
-  .cfg-opt input{ width:18px; height:18px; margin:0; accent-color:var(--grape); flex:none; }
+  .seg-opt input:checked + span{ border-color:var(--grape); background:var(--sel-bg); color:var(--grape); font-weight:700; }
+  .seg-opt input:focus-visible + span{ outline:2px solid var(--grape); outline-offset:2px; }
   .cgrid{ display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin:6px 0 10px; }
   .csw{
     width:100%; aspect-ratio:1/1; border-radius:14px; border:2px solid var(--line); background:var(--paper);
@@ -275,7 +276,6 @@
 <div class="app">
   <div class="title-row">
     <h1>🌟 지안이 칭찬스티커 🌟</h1>
-    <p>잘한 일이 있으면 도장을 콕! 찍고 메모도 남겨보세요</p>
     <button class="settings-btn" id="settingsBtn" aria-label="설정">⚙</button>
     <div id="syncStatus" style="font-size:11px;color:var(--sub);margin-top:2px;"></div>
   </div>
@@ -287,8 +287,6 @@
 
   <div id="mainArea"></div>
 
-  <div class="footer-note">칸을 톡 누르면 귀여운 캐릭터 도장을 고르고 메모도 남길 수 있어요</div>
-  <div class="footer-note">화면을 아래로 당기면 새로고침, 캘린더를 좌우로 밀면 달이 바뀌어요</div>
   <div id="appVersion"></div>
 </div>
 
@@ -333,12 +331,13 @@
     <div class="cfg-sub" id="cfgSub"></div>
 
     <div class="cfg-title">화면 모드</div>
-    <label class="cfg-opt"><input type="radio" name="theme" value="system"><span>시스템 설정 따름</span></label>
-    <label class="cfg-opt"><input type="radio" name="theme" value="light"><span>라이트 (기본)</span></label>
-    <label class="cfg-opt"><input type="radio" name="theme" value="dark"><span>다크</span></label>
+    <div class="seg" role="radiogroup" aria-label="화면 모드">
+      <label class="seg-opt"><input type="radio" name="theme" value="system"><span>시스템</span></label>
+      <label class="seg-opt"><input type="radio" name="theme" value="light"><span>라이트</span></label>
+      <label class="seg-opt"><input type="radio" name="theme" value="dark"><span>다크</span></label>
+    </div>
 
     <div class="cfg-title">배경 색상</div>
-    <div class="cfg-desc">라이트 모드에서, 배경 사진이 없을 때 적용돼요</div>
     <div class="cgrid" id="bgColorGrid"></div>
     <div class="pill-row" id="bgIntRow"></div>
 
@@ -349,7 +348,6 @@
     <div class="err-msg" id="bgErr"></div>
 
     <div class="cfg-title">가족 동기화</div>
-    <div class="cfg-desc" id="cfgSyncDesc"></div>
     <button class="save-btn" id="openSbBtn">Supabase 연동 설정</button>
   </div>
 </div>
@@ -359,12 +357,6 @@
     <div class="sheet-head">
       <h3>Supabase 연동 설정</h3>
       <button id="closeSbSheet">✕</button>
-    </div>
-    <div class="period-info" style="text-align:left;line-height:1.5;margin-bottom:10px;">
-      가족과 데이터를 실시간으로 공유하려면 <b>Supabase</b>(supabase.com)에서 무료 프로젝트를 만들고,
-      SQL Editor에서 app_data 테이블을 만든 뒤 Project URL과 anon(public) key를 아래에 입력해주세요.
-      키는 이 기기 브라우저에만 저장되지만, 알고 있는 사람은 누구나 데이터를 쓸 수 있으니
-      가족 외에는 공유하지 마세요.
     </div>
     <div class="field-label">Project URL</div>
     <input class="field-input" id="sbUrl" placeholder="예: https://xxxx.supabase.co">
@@ -727,9 +719,6 @@ function renderCfg(){
   document.getElementById('bgIntRow').innerHTML = BGCOLOR
     ? BGINT_STEPS.map(([v,,label])=>`<button class="pill${BGINT===v?' on':''}" data-int="${v}">${label}</button>`).join('')
     : '';
-  document.getElementById('cfgSyncDesc').textContent = sbConfig
-    ? '가족 기기와 도장이 실시간으로 동기화되고 있어요.'
-    : '지금은 이 기기에만 저장돼요. Supabase를 연결하면 가족 기기와 함께 볼 수 있어요.';
 }
 
 document.getElementById('settingsBtn').addEventListener('click', ()=>{ renderCfg(); cfgOverlay.classList.add('show'); });
