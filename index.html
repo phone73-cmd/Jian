@@ -297,8 +297,8 @@ textarea:focus { outline: none; border-color: var(--accent-ink); box-shadow: 0 0
 
     <div class="paper">
       <h2>문장 백업</h2>
-      <p class="tip">고친 문장은 이 기기에만 저장돼요. 다른 기기에서 쓰려면 이 기기에서 내보내기를 눌러 글을 복사하고, 다른 기기에서 아래 칸에 붙여 넣어 가져오기를 눌러요.</p>
-      <textarea id="bkText" rows="5" spellcheck="false" aria-label="백업 글" placeholder="내보낸 글이 여기에 나와요. 가져올 때는 여기에 붙여 넣어요."></textarea>
+      <p class="tip">고친 문장은 이 기기에만 저장돼요.</p>
+      <textarea id="bkText" rows="5" spellcheck="false" aria-label="백업 글"></textarea>
       <div class="actions edactions">
         <button class="ghost" id="bkExport" type="button">내보내기</button>
         <button class="primary" id="bkImport" type="button">가져오기</button>
@@ -326,14 +326,14 @@ const APP_VERSION = '1.0.5';
 const DATA = [
   { g: 1, title: "장면을 상상하며", items: ["땀이 송골송골","함께 먹고 싶어.","급식은 짜장면이다!","하얗고 예쁜 집","새끼 고양이들이었어.","곯아떨어졌어.","시원한 산들바람","찾을 수가 없어서","많이 생겼거든.","침대 밑의 공간에"] },
   { g: 2, title: "서로 존중해요", items: ["노력하는 모습","넌 잘하고 있어.","기분이 상하지 않게","앞으로 자주 연락하자.","물건이 쏟아져","긍정적으로 받아들이고","끝까지 듣고","여쭤보면 어떨까?","짖는 개를 보고","상황에 맞는 말을"] },
-  { g: 3, title: "내용을 살펴요", items: ["사과를 꼭 해야 해.","뉘우치고 있다는","받아 주든지 말든지","정중하게 물어본다.","말한 까닭을 찾는다.","엄지손가락 굵기만큼","줄기가 길게 퍼져","음식을 청결하게","소매가 짧은 옷","어떡하면 시원할까요?"] },
+  { g: 3, title: "내용을 살펴요", items: ["사과를 꼭 해야 해.","뉘우치고 있다는","받아 주든지 말든지","정중하게 물어본다.","말한 까닭을 찾는다.","엄지손가락 굵기만큼","줄기가 질겨져","음식을 청결하게","소매가 짧은 옷","어떡하면 시원할까요?"] },
   { g: 4, title: "마음을 전해요", items: ["그린 것이에요.","뜻깊은 작품을","우체국이 어디 있나요?","도와주어서 고마워!","냄새 맡은 값","눈을 동그랗게 뜨고","웃음을 터뜨렸답니다.","어깨를 들썩거렸습니다.","끝에 있습니다.","느릿한 목소리로"] },
   { g: 5, title: "바른 말로 이야기 나누어요", items: ["축구를 가르쳐 주었어.","꾀를 부려","사진첩이 바랬다.","길을 잃어버렸다.","친구와 부딪치거나","머리를 갸우뚱거리며","꽃씨를 뿌렸습니다.","높이 자랄 거야.","줄넘기를 하고","국물이 시원하고"] },
   { g: 6, title: "매체를 경험해요", items: ["책으로 읽으니","땅에 묻혀 있는","물을 계속 튼 채로","기분이 어땠니?","밑줄을 긋고","선생님을 만났습니다.","깨끗이 씻었습니다.","등산하기 딱 좋다고?","밝은 표정으로","글과 그림을 활용해"] },
-  { g: 7, title: "내 생각은 이래요", items: ["우리가 힘을 합쳐","밥을 줄 수도 있다.","반려견이 짖게 되면","귀찮고 힘들다는 생각","몸무게를 조절하는 데에도","학교 뒤뜰을 자유롭게","고구마 심어도 돼요?","뿌듯할 것 같습니다.","날이 참 맑네.","괜찮아."] },
-  { g: 8, title: "나도 작가", items: ["눈 내린 등굣길","눈 쌓인 운동장","널따란 호수","떡볶이집 지나서","노랫말로 써 볼 거야.","거센 바람이","풍덩이를 따라다니던","담요도 덮어 주고","낯선 손님에게는","흠뻑 젖은 채"] },
+  { g: 7, title: "내 생각은 이래요", items: ["우리가 힘을 합쳐","밟을 수도 있다.","반려견이 짖게 되면","귀찮고 힘들다는 생각","몸무게를 조절하는 데에도","학교 뒤뜰을 자유롭게","고구마 심어도 돼요?","뿌듯할 것 같습니다.","날이 참 맑네.","괜찮아."] },
+  { g: 8, title: "나도 작가", items: ["눈 내린 등굣길","눈 쌓인 운동장","널따란 호수","떡볶이집 지나서","노랫말로 써 볼 거야.","거센 바람이","풍뎅이를 따라다니던","담요도 덮어 주고","낯선 손님에게는","흠뻑 젖은 채"] },
   { g: 9, title: "알쏭달쏭 한글 맞춤법 (단어편)", items: ["역할","고깔","설렘","곱빼기","쌀뜨물","육개장","껍데기","딱따구리","두루마리","낭떠러지"] },
-  { g: 10, title: "알쏭달쏭 한글 맞춤법 (문장편)", items: ["대가를 치르다.","두 시에 봬요.","금세 먹어 치웠다.","반드시 끝내야 한다.","끈을 단단히 매어라.","가방을 메다.","방이 널찍하다.","껍질째 베어 먹었다.","기다란 줄을 잡다.","곰곰이 생각하다."] }
+  { g: 10, title: "알쏭달쏭 한글 맞춤법 (문장편)", items: ["대가를 치르다.","두 시에 봬요.","금세 먹어 치웠다.","반드시 끝내야 한다.","끈을 단단히 매어라.","가방을 메다.","방이 널찍하다.","껍질째 베어먹었다.","기다란 줄을 잡다.","곰곰이 생각하다."] }
 ];
 const DEFAULTS = DATA.map(d => d.items.slice());
 
@@ -429,7 +429,8 @@ function updateModeInfo() {
   const el = $("modeInfo");
   el.replaceChildren("지금 방식: ");
   const b = document.createElement("b"); b.textContent = effectiveMode() === "hear" ? "듣고 쓰기" : "보고 쓰기";
-  el.append(b, " · 위의 설정에서 바꿀 수 있어요.");
+  el.append(b);
+  if (SET.shuffle) el.append(" · 문제 순서 섞기");
 }
 
 /* 설정 화면 연결 */
@@ -445,7 +446,7 @@ function initSettings() {
   $("optSpace").checked = SET.strict;
   $("optSpace").addEventListener("change", e => { SET.strict = e.target.checked; saveSettings(); });
   $("optShuffle").checked = SET.shuffle;
-  $("optShuffle").addEventListener("change", e => { SET.shuffle = e.target.checked; saveSettings(); });
+  $("optShuffle").addEventListener("change", e => { SET.shuffle = e.target.checked; saveSettings(); updateModeInfo(); });
   document.querySelectorAll('input[name="theme"]').forEach(r => {
     r.checked = r.value === SET.theme;
     r.addEventListener("change", () => { if (r.checked) { SET.theme = r.value; saveSettings(); applyLook(); } });
