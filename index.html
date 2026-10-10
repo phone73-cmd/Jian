@@ -187,6 +187,13 @@ textarea:focus { outline: none; border-color: var(--accent-ink); box-shadow: 0 0
 .modal-card { width: 100%; max-width: 360px; background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.25); }
 .modal-card h3 { font-size: 20px; }
 .modal-card p { margin: 0; color: var(--muted); }
+#fx { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 30; background: rgba(22, 12, 30, .45); opacity: 0; pointer-events: none; transition: opacity .25s; }
+#fx.on { opacity: 1; pointer-events: auto; }
+#fxText { position: fixed; left: 50%; top: 40%; transform: translate(-50%, -50%) scale(.6); z-index: 31; font-family: var(--font-display); font-size: 64px; color: #fff; text-shadow: 0 3px 0 var(--accent-ink), 0 6px 18px rgba(0,0,0,.35); opacity: 0; pointer-events: none; white-space: nowrap; }
+#fxText.on { animation: fxpop .6s cubic-bezier(.2, 1.4, .4, 1) forwards; }
+@keyframes fxpop { to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+@media (max-width: 430px) { #fxText { font-size: 52px; } }
+@media (prefers-reduced-motion: reduce) { #fx { display: none; } #fxText.on { animation: none; opacity: 1; transform: translate(-50%, -50%); } }
 .actions.edactions { justify-content: flex-end; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(24px + env(safe-area-inset-bottom, 0px)); background: var(--accent-ink); color: var(--card); padding: 10px 20px; border-radius: 999px; font-family: var(--font-display); z-index: 10; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
 @media (max-width: 520px) {
@@ -330,6 +337,8 @@ textarea:focus { outline: none; border-color: var(--accent-ink); box-shadow: 0 0
     </div>
   </div>
 </div>
+<canvas id="fx" aria-hidden="true"></canvas>
+<div id="fxText" aria-hidden="true"></div>
 <div id="toast" class="toast" role="status" hidden></div>
 <div id="ptr" class="ptr" aria-hidden="true" hidden></div>
 
@@ -491,6 +500,54 @@ function initSettings() {
     askConfirm(g + "급 문장을 초기화할까요?", "고친 문장이 모두 처음 상태로 돌아가요. 되돌릴 수 없어요.", "초기화", resetEditor);
   });
 }
+
+/* 만점 폭죽: 결과 화면이 열릴 때 한 번 터뜨리고, 모두 사라지면 닫는다. 화면을 누르면 바로 꺼진다 */
+const fxCv = $("fx"), fxCtx = fxCv.getContext("2d"), fxTxt = $("fxText");
+let fxParts = [], fxRaf = 0, fxTimers = [], fxBursting = false;
+function stopFx() {
+  fxTimers.forEach(clearTimeout); fxTimers = []; cancelAnimationFrame(fxRaf); fxParts = []; fxBursting = false;
+  fxCv.classList.remove("on"); fxTxt.classList.remove("on");
+}
+function fxBurst(x, y, colors) {
+  const n = 34;
+  for (let i = 0; i < n; i++) {
+    const a = (Math.PI * 2 * i) / n + Math.random() * .3, sp = 2 + Math.random() * 4.2;
+    fxParts.push({ x, y, px: x, py: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0, max: 55 + Math.random() * 30, color: colors[i % colors.length], w: 2 + Math.random() * 2 });
+  }
+}
+function fxFrame() {
+  fxCtx.clearRect(0, 0, innerWidth, innerHeight);
+  fxParts = fxParts.filter(p => p.life < p.max);
+  for (const p of fxParts) {
+    p.px = p.x; p.py = p.y;
+    p.vx *= .985; p.vy = p.vy * .985 + .07;
+    p.x += p.vx; p.y += p.vy; p.life++;
+    fxCtx.globalAlpha = Math.max(0, 1 - p.life / p.max);
+    fxCtx.strokeStyle = p.color; fxCtx.lineWidth = p.w; fxCtx.lineCap = "round";
+    fxCtx.beginPath(); fxCtx.moveTo(p.px, p.py); fxCtx.lineTo(p.x, p.y); fxCtx.stroke();
+  }
+  fxCtx.globalAlpha = 1;
+  if (fxParts.length || fxBursting) fxRaf = requestAnimationFrame(fxFrame); else stopFx();
+}
+function playFireworks(text) {
+  stopFx();
+  fxTxt.textContent = text;
+  void fxTxt.offsetWidth; fxTxt.classList.add("on");
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { fxTimers.push(setTimeout(stopFx, 2200)); return; }
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  fxCv.width = Math.round(innerWidth * dpr); fxCv.height = Math.round(innerHeight * dpr);
+  fxCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  fxCv.classList.add("on");
+  const cs = getComputedStyle(root);
+  const colors = [cs.getPropertyValue("--accent").trim() || "#f7a8c0", cs.getPropertyValue("--accent-ink").trim() || "#b0305f", "#ffd166", "#ffffff"];
+  fxBursting = true;
+  [0, 350, 750, 1100, 1500, 1900, 2300].forEach(t => fxTimers.push(setTimeout(() => {
+    fxBurst(innerWidth * (.2 + Math.random() * .6), innerHeight * (.18 + Math.random() * .4), colors);
+  }, t)));
+  fxTimers.push(setTimeout(() => { fxBursting = false; }, 2400));
+  fxRaf = requestAnimationFrame(fxFrame);
+}
+fxCv.addEventListener("click", stopFx);
 
 /* 확인창: 확인을 누를 때만 실행한다 */
 function askConfirm(title, msg, yesLabel, onYes) {
@@ -673,6 +730,7 @@ function cell(c, cls) {
 /* 화면 전환 */
 let S = null; // { grade, order, idx, results, checked, full, strict, hear }
 function show(name) {
+  stopFx();
   for (const id of ["home", "quiz", "done", "settings"]) $(id).hidden = id !== name;
   $("btnHome").hidden = name === "home";
   $("btnSettings").classList.toggle("on", name === "settings");
@@ -817,6 +875,7 @@ function finish() {
   acts.append(mk("이 급수 처음부터", () => start(S.grade.g), wrong.length ? "ghost" : "primary"));
   acts.append(mk("급수 고르기", renderHome, "ghost"));
   show("done");
+  if (n === total) playFireworks(S.full ? "100점!" : "모두 정답!");
 }
 
 /* 소리 듣기 */
