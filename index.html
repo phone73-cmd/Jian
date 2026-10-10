@@ -69,6 +69,7 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .brand small { font-family: var(--font-body); font-size: 14px; color: var(--muted); margin-left: 8px; letter-spacing: 0; }
 .nav { display: flex; gap: 8px; flex-shrink: 0; }
 .pill { min-height: 44px; border: 2px solid var(--line); background: var(--card); border-radius: 999px; padding: 6px 16px; }
+.pill.icon { min-width: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 .pill:hover { border-color: var(--accent); }
 .pill.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 
@@ -207,7 +208,7 @@ textarea:focus { outline: none; border-color: var(--accent-ink); box-shadow: 0 0
   <header class="top">
     <div class="brand">받아쓰기 공책<small class="vtag" id="ver"></small><small id="subtitle">한글, 틀려도 괜찮아!</small></div>
     <nav class="nav">
-      <button class="pill" id="btnHome" type="button" hidden>홈</button>
+      <button class="pill icon" id="btnHome" type="button" aria-label="홈" title="홈" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5a1 1 0 0 0 1 1H10v-5.5h4v5.5h3.5a1 1 0 0 0 1-1V10"/></svg></button>
       <button class="pill" id="btnSettings" type="button" aria-label="설정">설정</button>
     </nav>
   </header>
