@@ -823,8 +823,15 @@ function say(text) {
 function speak() { say(S.grade.items[S.order[S.idx]]); }
 
 /* 목소리 선택: 기기에 설치된 한국어 음성만 보여 준다 */
+const HELPER_VOICES = ["eddy", "flo", "grandma", "grandpa", "reed", "rocko", "sandy", "shelley",
+  "albert", "bad", "bahh", "bells", "boing", "bubbles", "cellos", "good", "jester", "organ", "superstar", "trinoids", "whisper", "wobble", "zarvox", "fred", "junior", "ralph", "espeak"];
+const GOOD_VOICE = /프리미엄|고급|향상|premium|enhanced/i;
 function koVoices() {
-  try { return speechSynthesis.getVoices().filter(v => /^ko([-_]|$)/i.test(v.lang)); } catch (e) { return []; }
+  try {
+    return speechSynthesis.getVoices()
+      .filter(v => /^ko([-_]|$)/i.test(v.lang) && !HELPER_VOICES.includes(v.name.trim().split(/[\s(]/)[0].toLowerCase()))
+      .sort((a, b) => GOOD_VOICE.test(b.name) - GOOD_VOICE.test(a.name));
+  } catch (e) { return []; }
 }
 function refreshVoices() {
   const sel = $("voiceSel"), list = koVoices();
