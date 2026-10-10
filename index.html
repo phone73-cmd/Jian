@@ -156,7 +156,11 @@ td:last-child { min-width: 180px; }
 .sw { min-height: 56px; display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--card); border: 2px solid var(--line); border-radius: 12px; text-align: left; }
 .sw i { width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0; border: 2px solid var(--card); box-shadow: 0 0 0 1px var(--line); }
 .sw[aria-pressed="true"] { border-color: var(--accent-ink); background: var(--accent-soft); }
-.edhead { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.gtabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.gtab { min-height: 44px; padding: 0 4px; border: 2px solid var(--line); border-radius: 10px; background: var(--card); font-family: var(--font-display); font-size: 17px; }
+.gtab:hover { border-color: var(--accent); }
+.gtab[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.edtitle { font-size: 18px; color: var(--accent-ink); padding-top: 4px; border-top: 1px dashed var(--line); padding-top: 14px; }
 select { min-height: 48px; font: inherit; font-size: 17px; padding: 6px 12px; border: 2px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--ink); max-width: 100%; }
 .edrow { display: flex; align-items: center; gap: 8px; }
 .edrow .n { font-family: var(--font-display); color: var(--muted); min-width: 1.6em; text-align: right; }
@@ -270,10 +274,8 @@ select { min-height: 48px; font: inherit; font-size: 17px; padding: 6px 12px; bo
     <div class="paper">
       <h2>문제 문장 고치기</h2>
       <p class="tip">사진에서 잘못 옮긴 문장이 있으면 여기서 고쳐요. 문제는 띄어쓰기와 문장부호 없이 나오고, 정답은 여기에 쓴 그대로 채점돼요.</p>
-      <div class="edhead">
-        <label for="edGrade">급수</label>
-        <select id="edGrade"></select>
-      </div>
+      <div class="gtabs" id="edTabs" role="group" aria-label="급수 선택"></div>
+      <h3 class="edtitle" id="edTitle"></h3>
       <div class="col" id="edList" style="gap:8px"></div>
       <div class="actions edactions">
         <button class="ghost" id="edReset" type="button">문장 초기화</button>
@@ -427,16 +429,23 @@ function initSettings() {
     b.addEventListener("click", () => { SET.palette = p.id; saveSettings(); paintColors(); });
     return b;
   }));
-  $("edGrade").replaceChildren(...DATA.map(d => { const o = document.createElement("option"); o.value = d.g; o.textContent = d.g + "급 · " + d.title; return o; }));
-  $("edGrade").addEventListener("change", () => renderEditor(+$("edGrade").value));
+  $("edTabs").replaceChildren(...DATA.map(d => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "gtab"; b.dataset.g = d.g; b.textContent = d.g + "급";
+    b.addEventListener("click", () => renderEditor(d.g));
+    return b;
+  }));
   $("edSave").addEventListener("click", saveEditor);
   $("edReset").addEventListener("click", resetEditor);
 }
 
 /* 문장 고치기 */
+let edCur = 1;
 function renderEditor(g, focusIdx) {
   const d = DATA[g - 1];
-  $("edGrade").value = g;
+  edCur = g;
+  $("edTitle").textContent = g + "급 · " + d.title;
+  document.querySelectorAll(".gtab").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.g === g)));
   $("edStatus").textContent = "";
   $("edList").replaceChildren(...d.items.map((t, i) => {
     const row = document.createElement("div");
@@ -460,14 +469,14 @@ function persistItems() {
   ls.set("dictation-items", ov);
 }
 function saveEditor() {
-  const g = +$("edGrade").value, d = DATA[g - 1];
+  const g = edCur, d = DATA[g - 1];
   d.items = d.items.map((_, i) => { const v = $("ed" + i).value.trim(); return v || DEFAULTS[g - 1][i]; });
   persistItems();
   renderEditor(g);
   $("edStatus").textContent = g + "급 문장을 저장했어요.";
 }
 function resetEditor() {
-  const g = +$("edGrade").value;
+  const g = edCur;
   DATA[g - 1].items = DEFAULTS[g - 1].slice();
   persistItems();
   renderEditor(g);
