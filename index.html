@@ -159,6 +159,9 @@ td:last-child { min-width: 180px; }
 .opts input:focus-visible { outline: 3px solid var(--accent-ink); outline-offset: 2px; }
 .opts input:disabled + span, .opts label:has(input:disabled) { opacity: .55; cursor: default; }
 #voiceSel { width: 100%; }
+#voiceDiag { font-size: 14px; }
+#voiceDiag summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
+#voiceDump { margin: 0; font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; color: var(--muted); }
 .subh { font-size: 18px; color: var(--ink); padding-top: 4px; }
 .sw { font-size: 17px; }
 .swatches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
@@ -280,6 +283,10 @@ textarea:focus { outline: none; border-color: var(--accent-ink); box-shadow: 0 0
         <button class="ghost" id="voiceTest" type="button">미리 듣기</button>
       </div>
       <p class="tip" id="voiceTip"></p>
+      <details id="voiceDiag">
+        <summary>음성 정보 (확인용)</summary>
+        <pre id="voiceDump"></pre>
+      </details>
     </div>
 
     <div class="paper">
@@ -856,7 +863,15 @@ function koVoices() {
       .sort((a, b) => isGoodVoice(b) - isGoodVoice(a));
   } catch (e) { return []; }
 }
+function dumpVoices() {
+  let all = [];
+  try { all = speechSynthesis.getVoices(); } catch (e) {}
+  const ko = all.filter(v => /^ko/i.test(v.lang));
+  $("voiceDump").textContent = "전체 " + all.length + "개 / 한국어 " + ko.length + "개\n" +
+    ko.map((v, i) => (i + 1) + ". 이름=" + v.name + "\n   주소=" + v.voiceURI + "\n   언어=" + v.lang + " 기기안=" + v.localService + " 기본=" + v.default).join("\n");
+}
 function refreshVoices() {
+  dumpVoices();
   const sel = $("voiceSel"), list = koVoices();
   const auto = new Option("자동 (기기 기본 음성)", "");
   sel.replaceChildren(auto, ...list.map(v => new Option(voiceLabel(v), v.voiceURI)));
