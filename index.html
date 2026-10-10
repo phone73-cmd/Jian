@@ -608,7 +608,17 @@ function resetEditor() {
 }
 /* 문장 백업: 고친 급수만 글로 내보내고, 붙여 넣어 가져온다 */
 function setBk(msg, err) { const el = $("bkStatus"); el.textContent = msg; el.classList.toggle("err", !!err); }
-function exportItems() {
+const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+function downloadFile(text, name) {
+  const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+/* 아이폰은 링크로 내려받기가 조용히 무시되는 경우가 있어서 공유창을 열어 '파일에 저장'을 고르게 한다.
+   브라우저는 저장이 끝났는지 알려 주지 않으므로, 안내 문구는 확인된 사실만 쓴다 */
+async function exportItems() {
   const items = {};
   DATA.forEach((d, i) => { if (d.items.some((t, k) => t !== DEFAULTS[i][k])) items[d.g] = d.items; });
   const edited = Object.keys(items).length;
@@ -617,13 +627,23 @@ function exportItems() {
   const text = JSON.stringify({ app: "dictation-note", version: 1, items });
   const d = new Date(), pad = x => String(x).padStart(2, "0");
   const name = "dictation-backup-" + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + ".txt";
+  const what = edited ? n + "개 급수" : "모든 급수";
   try {
-    const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
-    const a = document.createElement("a");
-    a.href = url; a.download = name;
-    document.body.append(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-    setBk((edited ? n + "개 급수를" : "고친 문장이 없어서 모든 급수를") + " " + name + " 파일로 저장했어요.");
+    if (isIOS() && navigator.share && navigator.canShare) {
+      const file = new File([text], name, { type: "text/plain" });
+      if (navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: "받아쓰기 문장 백업" });
+          setBk(what + "를 공유창으로 내보냈어요. '파일에 저장'을 골랐다면 파일 앱에서 확인해 주세요.");
+        } catch (e) {
+          if (e && e.name === "AbortError") setBk("내보내기를 취소했어요.");
+          else { downloadFile(text, name); setBk(what + " 파일(" + name + ") 저장을 요청했어요. 다운로드 폴더에서 확인해 주세요."); }
+        }
+        return;
+      }
+    }
+    downloadFile(text, name);
+    setBk(what + " 파일(" + name + ") 저장을 요청했어요. 다운로드 폴더에서 확인해 주세요.");
   } catch (e) {
     setBk("파일로 저장하지 못했어요. 브라우저에서 다운로드가 막혀 있는지 확인해 주세요.", true);
   }
