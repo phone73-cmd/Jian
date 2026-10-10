@@ -21,7 +21,11 @@ jobs:
         run: |
           OLD_VERSION=$(grep -o '"version": *"[0-9]*\.[0-9]*\.[0-9]*"' manifest.json | grep -o '[0-9]*\.[0-9]*\.[0-9]*')
           IFS='.' read -r MAJOR MINOR PATCH <<< "$OLD_VERSION"
-          NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+          # Patch and minor carry at 10: 1.0.9 -> 1.1.0, 1.9.9 -> 2.0.0 (an old patch of 10 or more also carries).
+          PATCH=$((PATCH + 1))
+          if [ "$PATCH" -ge 10 ]; then PATCH=0; MINOR=$((MINOR + 1)); fi
+          if [ "$MINOR" -ge 10 ]; then MINOR=0; MAJOR=$((MAJOR + 1)); fi
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
           echo "old=$OLD_VERSION" >> "$GITHUB_OUTPUT"
           echo "new=$NEW_VERSION" >> "$GITHUB_OUTPUT"
           # Escape dots and anchor each replacement: a bare "1.0.1" regex also matched "140,1" inside CSS.
