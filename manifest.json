@@ -1,7 +1,7 @@
 {
   "name": "받아쓰기 공책",
   "short_name": "받아쓰기",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "1~10급 받아쓰기를 듣고 쓰거나 보고 쓰며 틀린 글자를 확인하는 연습 앱",
   "start_url": "./index.html",
   "scope": "./",
