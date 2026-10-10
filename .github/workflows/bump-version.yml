@@ -28,7 +28,7 @@ jobs:
           OLD_RE=$(printf '%s' "$OLD_VERSION" | sed 's/\./\\./g')
           sed -i "s/const APP_VERSION = '$OLD_RE';/const APP_VERSION = '$NEW_VERSION';/" index.html
           sed -i "s/\"version\": \"$OLD_RE\"/\"version\": \"$NEW_VERSION\"/" manifest.json
-          sed -i "s/jian-stamp-calendar-v$OLD_RE'/jian-stamp-calendar-v$NEW_VERSION'/" sw.js
+          sed -i "s/dictation-note-v$OLD_RE'/dictation-note-v$NEW_VERSION'/" sw.js
 
       - name: Commit and push
         run: |

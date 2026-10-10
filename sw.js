@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jian-stamp-calendar-v1.0.16';
+const CACHE_NAME = 'dictation-note-v1.0.0';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (event) => {
@@ -22,7 +22,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
-  // Supabase API responses must never be cached here, or reads return stale stamps.
+  // Other origins (Google Fonts etc.) are never cached here.
   if (new URL(req.url).origin !== self.location.origin) return;
   // Network first so a new deploy shows immediately; the cache is only an offline fallback.
   event.respondWith(
