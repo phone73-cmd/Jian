@@ -150,7 +150,12 @@ td:last-child { min-width: 180px; }
 /* 설정 */
 .opts { display: flex; flex-wrap: wrap; gap: 4px 20px; }
 .opts label { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; font-size: 16px; }
-.opts input { width: 20px; height: 20px; accent-color: var(--accent-ink); flex-shrink: 0; }
+.opts input { appearance: none; -webkit-appearance: none; margin: 0; width: 24px; height: 24px; flex-shrink: 0; display: grid; place-content: center; background: var(--card); border: 2px solid var(--muted); border-radius: 50%; cursor: pointer; }
+.opts input[type="checkbox"] { border-radius: 7px; }
+.opts input:checked { background: var(--accent); border-color: var(--accent-ink); }
+.opts input[type="radio"]:checked::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--on-accent); }
+.opts input[type="checkbox"]:checked::before { content: ""; width: 6px; height: 12px; margin-top: -2px; border: solid var(--on-accent); border-width: 0 3px 3px 0; transform: rotate(45deg); }
+.opts input:focus-visible { outline: 3px solid var(--accent-ink); outline-offset: 2px; }
 .opts input:disabled + span, .opts label:has(input:disabled) { opacity: .55; cursor: default; }
 .swatches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .sw { min-height: 56px; display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--card); border: 2px solid var(--line); border-radius: 12px; text-align: left; }
@@ -170,7 +175,6 @@ select { min-height: 48px; font: inherit; font-size: 17px; padding: 6px 12px; bo
 .status:empty { display: none; }
 .status { min-height: 1.4em; font-size: 15px; color: var(--ok); margin: 0; }
 
-.pill.refresh { min-width: 44px; padding-inline: 0; font-size: 20px; line-height: 1; }
 .ptr { position: fixed; left: 50%; top: calc(8px + env(safe-area-inset-top, 0px)); transform: translate(-50%, -64px); background: var(--card); color: var(--accent-ink); border: 2px solid var(--accent); border-radius: 999px; padding: 6px 18px; font-family: var(--font-display); z-index: 10; pointer-events: none; white-space: nowrap; }
 .actions.edactions { justify-content: flex-end; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(24px + env(safe-area-inset-bottom, 0px)); background: var(--accent-ink); color: var(--card); padding: 10px 20px; border-radius: 999px; font-family: var(--font-display); z-index: 10; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
@@ -196,7 +200,6 @@ select { min-height: 48px; font: inherit; font-size: 17px; padding: 6px 12px; bo
     <nav class="nav">
       <button class="pill" id="btnHome" type="button" hidden>홈</button>
       <button class="pill" id="btnSettings" type="button" aria-label="설정">설정</button>
-      <button class="pill refresh" id="btnRefresh" type="button" aria-label="새로고침" title="새로고침">↻</button>
     </nav>
   </header>
 
@@ -718,7 +721,7 @@ $("btnHome").addEventListener("click", () => { try { speechSynthesis.cancel(); }
 $("btnSettings").addEventListener("click", () => openSettings(S ? S.grade.g : 1));
 
 /* 새로고침: 앱 캐시를 지우고 새 버전을 받아 다시 불러온다 */
-let refreshing = false, armedUntil = 0;
+let refreshing = false;
 async function refreshApp() {
   if (refreshing) return;
   refreshing = true;
@@ -730,14 +733,6 @@ async function refreshApp() {
   } catch (e) {}
   location.reload();
 }
-$("btnRefresh").addEventListener("click", () => {
-  if (!$("quiz").hidden && Date.now() > armedUntil) {
-    armedUntil = Date.now() + 3000;
-    toast("풀던 문제가 사라져요. 한 번 더 누르면 새로고침해요");
-    return;
-  }
-  refreshApp();
-});
 {
   let startY = null, pull = 0;
   const THRESHOLD = 70;
