@@ -310,7 +310,7 @@ textarea:focus { outline: none; border-color: var(--accent-ink); box-shadow: 0 0
     <div class="paper">
       <h2>문장 백업</h2>
       <p class="tip">고친 문장은 이 기기에만 저장돼요.</p>
-      <textarea id="bkText" rows="5" spellcheck="false" aria-label="백업 글" hidden></textarea>
+      <input type="file" id="bkFile" accept=".txt,text/plain,application/json" hidden>
       <div class="actions edactions">
         <button class="ghost" id="bkExport" type="button">내보내기</button>
         <button class="primary" id="bkImport" type="button">가져오기</button>
@@ -480,7 +480,8 @@ function initSettings() {
   }));
   $("edSave").addEventListener("click", saveEditor);
   $("bkExport").addEventListener("click", exportItems);
-  $("bkImport").addEventListener("click", importItems);
+  $("bkImport").addEventListener("click", () => $("bkFile").click());
+  $("bkFile").addEventListener("change", e => { importFile(e.target.files[0]); e.target.value = ""; });
   $("edReset").addEventListener("click", () => {
     const g = edCur;
     if (DATA[g - 1].items.every((t, i) => t === DEFAULTS[g - 1][i])) { $("edStatus").textContent = g + "급은 고친 문장이 없어요."; return; }
@@ -553,15 +554,19 @@ function exportItems() {
   const edited = Object.keys(items).length;
   if (!edited) DATA.forEach(d => { items[d.g] = d.items; });
   const n = Object.keys(items).length;
-  const box = $("bkText");
-  box.hidden = false;
-  box.value = JSON.stringify({ app: "dictation-note", version: 1, items });
-  box.focus(); box.select();
-  const what = edited ? n + "개 급수를" : "고친 문장이 없어서 모든 급수를";
-  const done = () => setBk(what + " 내보냈어요. 글을 복사해 두세요.");
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(box.value).then(() => setBk(what + " 내보내고 복사했어요."), done);
-  } else done();
+  const text = JSON.stringify({ app: "dictation-note", version: 1, items });
+  const d = new Date(), pad = x => String(x).padStart(2, "0");
+  const name = "dictation-backup-" + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + ".txt";
+  try {
+    const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    setBk((edited ? n + "개 급수를" : "고친 문장이 없어서 모든 급수를") + " " + name + " 파일로 저장했어요.");
+  } catch (e) {
+    setBk("파일로 저장하지 못했어요. 브라우저에서 다운로드가 막혀 있는지 확인해 주세요.", true);
+  }
 }
 function parseBackup(text) {
   let obj;
@@ -576,23 +581,24 @@ function parseBackup(text) {
   }
   return Object.keys(out).length ? out : null;
 }
-function importItems() {
-  const box = $("bkText");
-  if (box.hidden || !box.value.trim()) {
-    box.hidden = false; box.focus();
-    setBk("가져올 글을 칸에 붙여 넣고 가져오기를 한 번 더 눌러요.");
-    return;
-  }
-  const parsed = parseBackup($("bkText").value);
-  if (!parsed) { setBk("가져올 수 없는 글이에요. 내보내기로 만든 글을 그대로 붙여 넣어 주세요.", true); return; }
+function importText(text) {
+  const parsed = parseBackup(text);
+  if (!parsed) { setBk("가져올 수 없는 파일이에요. 내보내기로 만든 .txt 파일을 골라 주세요.", true); return; }
   const gs = Object.keys(parsed);
-  askConfirm(gs.length + "개 급수를 가져올까요?", "이 기기의 " + gs.map(g => g + "급").join(", ") + " 문장이 가져온 문장으로 바뀌어요.", "가져오기", () => {
+  askConfirm(gs.length + "개 급수를 가져올까요?", "이 기기의 " + gs.map(g => g + "급").join(", ") + " 문장이 파일의 문장으로 바뀌어요.", "가져오기", () => {
     gs.forEach(g => { DATA[g - 1].items = parsed[g]; });
     persistItems();
     renderEditor(edCur);
-    box.value = ""; box.hidden = true;
     setBk(gs.length + "개 급수를 가져왔어요.");
   });
+}
+function importFile(file) {
+  if (!file) return;
+  if (file.size > 1024 * 1024) { setBk("파일이 너무 커요. 내보내기로 만든 .txt 파일을 골라 주세요.", true); return; }
+  const r = new FileReader();
+  r.onload = () => importText(String(r.result));
+  r.onerror = () => setBk("파일을 읽지 못했어요. 다시 시도해 주세요.", true);
+  r.readAsText(file, "utf-8");
 }
 
 function openSettings(g, idx) {
