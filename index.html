@@ -429,7 +429,8 @@ function updateModeInfo() {
   const el = $("modeInfo");
   el.replaceChildren("지금 방식: ");
   const b = document.createElement("b"); b.textContent = effectiveMode() === "hear" ? "듣고 쓰기" : "보고 쓰기";
-  el.append(b, " · 위의 설정에서 바꿀 수 있어요.");
+  el.append(b);
+  if (SET.shuffle) el.append(" · 문제 순서 섞기");
 }
 
 /* 설정 화면 연결 */
@@ -445,7 +446,7 @@ function initSettings() {
   $("optSpace").checked = SET.strict;
   $("optSpace").addEventListener("change", e => { SET.strict = e.target.checked; saveSettings(); });
   $("optShuffle").checked = SET.shuffle;
-  $("optShuffle").addEventListener("change", e => { SET.shuffle = e.target.checked; saveSettings(); });
+  $("optShuffle").addEventListener("change", e => { SET.shuffle = e.target.checked; saveSettings(); updateModeInfo(); });
   document.querySelectorAll('input[name="theme"]').forEach(r => {
     r.checked = r.value === SET.theme;
     r.addEventListener("change", () => { if (r.checked) { SET.theme = r.value; saveSettings(); applyLook(); } });
