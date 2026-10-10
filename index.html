@@ -839,8 +839,11 @@ function voiceLabel(v) {
 const isGoodVoice = v => GOOD_VOICE.test(v.name) || /enhanced|premium/i.test(v.voiceURI || "");
 function koVoices() {
   try {
-    return speechSynthesis.getVoices()
-      .filter(v => /^ko([-_]|$)/i.test(v.lang) && !HELPER_VOICES.includes(v.name.trim().split(/[\s(]/)[0].toLowerCase()))
+    const all = speechSynthesis.getVoices()
+      .filter(v => /^ko([-_]|$)/i.test(v.lang) && !HELPER_VOICES.includes(v.name.trim().split(/[\s(]/)[0].toLowerCase()));
+    /* 같은 이름의 고음질 음성이 있으면 기본(compact) 음성은 숨긴다. 고음질이 없으면 목록이 비지 않게 남긴다 */
+    return all
+      .filter(v => !(/compact/i.test(v.voiceURI || "") && all.some(o => o !== v && o.name === v.name && !/compact/i.test(o.voiceURI || ""))))
       .sort((a, b) => isGoodVoice(b) - isGoodVoice(a));
   } catch (e) { return []; }
 }
