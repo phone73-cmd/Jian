@@ -157,6 +157,8 @@ td:last-child { min-width: 180px; }
 .opts input[type="checkbox"]:checked::before { content: ""; width: 6px; height: 12px; margin-top: -2px; border: solid var(--on-accent); border-width: 0 3px 3px 0; transform: rotate(45deg); }
 .opts input:focus-visible { outline: 3px solid var(--accent-ink); outline-offset: 2px; }
 .opts input:disabled + span, .opts label:has(input:disabled) { opacity: .55; cursor: default; }
+.subh { font-size: 18px; color: var(--ink); padding-top: 4px; }
+.sw { font-size: 17px; }
 .swatches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .sw { min-height: 56px; display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--card); border: 2px solid var(--line); border-radius: 12px; text-align: left; }
 .sw i { width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0; border: 2px solid var(--card); box-shadow: 0 0 0 1px var(--line); }
@@ -270,13 +272,13 @@ textarea:focus { outline: none; border-color: var(--accent-ink); box-shadow: 0 0
 
     <div class="paper">
       <h2>화면</h2>
-      <div class="label">밝기</div>
+      <h3 class="subh">밝기</h3>
       <div class="opts" role="radiogroup" aria-label="밝기">
         <label for="thSys"><input type="radio" name="theme" id="thSys" value="system"><span>기기설정</span></label>
         <label for="thLight"><input type="radio" name="theme" id="thLight" value="light"><span>라이트모드</span></label>
         <label for="thDark"><input type="radio" name="theme" id="thDark" value="dark"><span>다크모드</span></label>
       </div>
-      <div class="label">색상</div>
+      <h3 class="subh">색상</h3>
       <div class="swatches" id="swatches"></div>
     </div>
 
