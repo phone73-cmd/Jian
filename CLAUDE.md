@@ -3,7 +3,7 @@
 ## 프로젝트 구조
 - 정적 PWA: `index.html`(HTML/CSS/JS 단일 파일), `sw.js`(서비스워커), `manifest.json`
 - 배포: `main` 브랜치 → GitHub Pages 자동 배포
-- 버전: `main`에 푸시되면 `.github/workflows/bump-version.yml`이 patch 버전을 자동으로 올리고 `manifest.json`, `index.html`(APP_VERSION), `sw.js`(CACHE_NAME)에 반영한다. 버전을 손으로 올리지 않는다.
+- 버전: `main`에 푸시되면 `.github/workflows/bump-version.yml`이 버전을 자동으로 올리고(patch와 minor는 10이 되면 윗자리로 올라간다: 1.0.9 → 1.1.0, 1.9.9 → 2.0.0) `manifest.json`, `index.html`(APP_VERSION), `sw.js`(CACHE_NAME)에 반영한다. 버전을 손으로 올리지 않는다.
 - 데이터: 서버 없이 `localStorage`만 쓴다. 키: `dictation-settings`(설정), `dictation-items`(고친 문장), `dictation-best`(최고 점수), `dictation-wrong`(틀린 문제), `dictation-stats`(급수별 기록)
 - 문제 원문은 `index.html`의 `DATA`(1~10급, 급수당 10문장)이고, 사용자가 설정에서 고친 문장은 `dictation-items`가 덮어쓴다.
 
