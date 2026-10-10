@@ -858,8 +858,9 @@ function voiceLabel(v) {
 }
 function koVoices() {
   try {
+    /* super-compact(간이) 음성은 음질이 낮아서 항상 숨긴다. 목록이 비어도 '자동'으로 기기 기본 음성을 쓸 수 있다 */
     const all = speechSynthesis.getVoices()
-      .filter(v => /^ko([-_]|$)/i.test(v.lang) && !HELPER_VOICES.includes(v.name.trim().split(/[\s(]/)[0].toLowerCase()));
+      .filter(v => /^ko([-_]|$)/i.test(v.lang) && !/super-compact/i.test(v.voiceURI || "") && !HELPER_VOICES.includes(v.name.trim().split(/[\s(]/)[0].toLowerCase()));
     /* 같은 이름에 더 좋은 등급이 있으면 낮은 등급은 숨긴다. 가장 좋은 등급은 항상 남아서 목록이 비지 않는다 */
     return all
       .filter(v => !all.some(o => o !== v && o.name === v.name && voiceTier(o)[1] > voiceTier(v)[1]))
