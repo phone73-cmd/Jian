@@ -157,6 +157,7 @@ td:last-child { min-width: 180px; }
 .opts input[type="checkbox"]:checked::before { content: ""; width: 6px; height: 12px; margin-top: -2px; border: solid var(--on-accent); border-width: 0 3px 3px 0; transform: rotate(45deg); }
 .opts input:focus-visible { outline: 3px solid var(--accent-ink); outline-offset: 2px; }
 .opts input:disabled + span, .opts label:has(input:disabled) { opacity: .55; cursor: default; }
+#voiceSel { width: 100%; }
 .subh { font-size: 18px; color: var(--ink); padding-top: 4px; }
 .sw { font-size: 17px; }
 .swatches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
@@ -270,6 +271,16 @@ textarea:focus { outline: none; border-color: var(--accent-ink); box-shadow: 0 0
       </div>
     </div>
 
+    <div class="paper" id="voiceBox">
+      <h2>소리</h2>
+      <label class="subh" for="voiceSel">목소리</label>
+      <select id="voiceSel"></select>
+      <div class="actions edactions">
+        <button class="ghost" id="voiceTest" type="button">미리 듣기</button>
+      </div>
+      <p class="tip" id="voiceTip"></p>
+    </div>
+
     <div class="paper">
       <h2>화면</h2>
       <h3 class="subh">밝기</h3>
@@ -364,7 +375,7 @@ const statStore = { get() { return ls.get("dictation-stats", {}); }, save(a) { l
 }
 
 /* 설정 */
-const SET = Object.assign({ mode: "hear", strict: true, shuffle: false, theme: "system", palette: "pink" }, ls.get("dictation-settings", {}));
+const SET = Object.assign({ mode: "hear", strict: true, shuffle: false, theme: "system", palette: "pink", voice: "" }, ls.get("dictation-settings", {}));
 let toastTimer = 0;
 function toast(msg) {
   const t = $("toast");
@@ -799,13 +810,29 @@ function finish() {
 }
 
 /* 소리 듣기 */
-function speak() {
+function say(text) {
   try {
-    const text = S.grade.items[S.order[S.idx]];
     const u = new SpeechSynthesisUtterance(text);
     u.lang = "ko-KR"; u.rate = .75;
+    const v = SET.voice && koVoices().find(x => x.voiceURI === SET.voice);
+    if (v) { u.voice = v; u.lang = v.lang; }
     speechSynthesis.cancel(); speechSynthesis.speak(u);
   } catch (e) {}
+}
+function speak() { say(S.grade.items[S.order[S.idx]]); }
+
+/* 목소리 선택: 기기에 설치된 한국어 음성만 보여 준다 */
+function koVoices() {
+  try { return speechSynthesis.getVoices().filter(v => /^ko([-_]|$)/i.test(v.lang)); } catch (e) { return []; }
+}
+function refreshVoices() {
+  const sel = $("voiceSel"), list = koVoices();
+  const auto = new Option("자동 (기기 기본 음성)", "");
+  sel.replaceChildren(auto, ...list.map(v => new Option(v.name + (v.localService ? "" : " (온라인)"), v.voiceURI)));
+  sel.value = list.some(v => v.voiceURI === SET.voice) ? SET.voice : "";
+  $("voiceTip").textContent = list.length
+    ? (list.length === 1 ? "이 기기에 설치된 한국어 음성이 하나예요. 아이폰은 설정 → 손쉬운 사용 → 말하기 콘텐츠 → 음성 → 한국어에서 향상된 음성을 내려받으면 여기에 나타날 수 있어요." : "")
+    : "이 기기에서 한국어 음성 목록을 찾지 못했어요. 기본 음성으로 읽어요.";
 }
 $("btnListen").addEventListener("click", speak);
 if (!CAN_SPEAK) $("btnListen").hidden = true;
@@ -855,6 +882,16 @@ async function refreshApp() {
   };
   document.addEventListener("touchend", end, { passive: true });
   document.addEventListener("touchcancel", () => { startY = null; pull = 0; ptr.hidden = true; }, { passive: true });
+}
+
+if (CAN_SPEAK) {
+  refreshVoices();
+  speechSynthesis.addEventListener && speechSynthesis.addEventListener("voiceschanged", refreshVoices);
+  [500, 1500, 3500].forEach(t => setTimeout(refreshVoices, t));
+  $("voiceSel").addEventListener("change", e => { SET.voice = e.target.value; saveSettings(); say("받아쓰기를 시작해 볼까요?"); });
+  $("voiceTest").addEventListener("click", () => say("받아쓰기를 시작해 볼까요?"));
+} else {
+  $("voiceBox").hidden = true;
 }
 
 initSettings();
