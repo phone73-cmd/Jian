@@ -176,6 +176,10 @@ select { min-height: 48px; font: inherit; font-size: 17px; padding: 6px 12px; bo
 .status { min-height: 1.4em; font-size: 15px; color: var(--ok); margin: 0; }
 
 .ptr { position: fixed; left: 50%; top: calc(8px + env(safe-area-inset-top, 0px)); transform: translate(-50%, -64px); background: var(--card); color: var(--accent-ink); border: 2px solid var(--accent); border-radius: 999px; padding: 6px 18px; font-family: var(--font-display); z-index: 10; pointer-events: none; white-space: nowrap; }
+.modal { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(20, 12, 24, .5); }
+.modal-card { width: 100%; max-width: 360px; background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.25); }
+.modal-card h3 { font-size: 20px; }
+.modal-card p { margin: 0; color: var(--muted); }
 .actions.edactions { justify-content: flex-end; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(24px + env(safe-area-inset-bottom, 0px)); background: var(--accent-ink); color: var(--card); padding: 10px 20px; border-radius: 999px; font-family: var(--font-display); z-index: 10; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
 @media (max-width: 520px) {
@@ -291,6 +295,16 @@ select { min-height: 48px; font: inherit; font-size: 17px; padding: 6px 12px; bo
 
 <footer class="ver" id="verBox">받아쓰기 공책 <span id="ver"></span></footer>
 
+<div id="confirmBox" class="modal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="cfTitle">
+    <h3 id="cfTitle"></h3>
+    <p id="cfMsg"></p>
+    <div class="actions edactions">
+      <button class="ghost" id="cfNo" type="button">취소</button>
+      <button class="primary" id="cfYes" type="button">초기화</button>
+    </div>
+  </div>
+</div>
 <div id="toast" class="toast" role="status" hidden></div>
 <div id="ptr" class="ptr" aria-hidden="true" hidden></div>
 
@@ -439,7 +453,25 @@ function initSettings() {
     return b;
   }));
   $("edSave").addEventListener("click", saveEditor);
-  $("edReset").addEventListener("click", resetEditor);
+  $("edReset").addEventListener("click", () => {
+    const g = edCur;
+    if (DATA[g - 1].items.every((t, i) => t === DEFAULTS[g - 1][i])) { $("edStatus").textContent = g + "급은 고친 문장이 없어요."; return; }
+    askConfirm(g + "급 문장을 초기화할까요?", "고친 문장이 모두 처음 상태로 돌아가요. 되돌릴 수 없어요.", "초기화", resetEditor);
+  });
+}
+
+/* 확인창: 확인을 누를 때만 실행한다 */
+function askConfirm(title, msg, yesLabel, onYes) {
+  const box = $("confirmBox");
+  $("cfTitle").textContent = title; $("cfMsg").textContent = msg; $("cfYes").textContent = yesLabel;
+  const close = () => { box.hidden = true; document.removeEventListener("keydown", onKey); $("cfYes").onclick = $("cfNo").onclick = null; box.onclick = null; };
+  const onKey = e => { if (e.key === "Escape") close(); };
+  $("cfNo").onclick = close;
+  $("cfYes").onclick = () => { close(); onYes(); };
+  box.onclick = e => { if (e.target === box) close(); };
+  document.addEventListener("keydown", onKey);
+  box.hidden = false;
+  $("cfNo").focus();
 }
 
 /* 문장 고치기 */
