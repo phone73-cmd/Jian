@@ -48,6 +48,7 @@
   color-scheme: dark;
 }
 html, body { margin: 0; }
+[hidden] { display: none !important; }
 .ver { text-align: center; color: var(--muted); font-size: 13px; padding-top: 24px; }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body {
@@ -163,6 +164,7 @@ select { min-height: 48px; font: inherit; font-size: 17px; padding: 6px 12px; bo
 .edrow input:focus { outline: none; border-color: var(--accent-ink); box-shadow: 0 0 0 3px var(--accent-soft); }
 .edrow.changed input { border-color: var(--accent); background: var(--accent-soft); }
 .edrow .mod { font-size: 12px; color: var(--accent-ink); white-space: nowrap; min-width: 3em; }
+.status:empty { display: none; }
 .status { min-height: 1.4em; font-size: 15px; color: var(--ok); margin: 0; }
 
 .actions.edactions { justify-content: flex-end; }
