@@ -725,8 +725,7 @@ let refreshing = false;
 async function refreshApp() {
   if (refreshing) return;
   refreshing = true;
-  const ptr = $("ptr");
-  ptr.textContent = "새로고침 중..."; ptr.hidden = false; ptr.style.transform = "translate(-50%, 0)";
+  $("ptr").hidden = true;
   try {
     if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); }
     if (navigator.serviceWorker) { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); }
