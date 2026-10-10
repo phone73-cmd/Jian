@@ -35,16 +35,16 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #2a1f27; --card: #35272f; --ink: #f3eff9; --muted: #b3acc6; --line: #5a4350;
-    --accent: #f29bb8; --accent-ink: #ffb8cf; --accent-soft: #4a2f3b; --on-accent: #3a1626;
-    --ok: #56d09a; --ok-soft: #1b3a2e; --bad: #ff8592; --bad-soft: #4a2229; --hl: #5a4a14;
+    --bg: #18171c; --card: #222127; --ink: #ece9f2; --muted: #a5a2b2; --line: #38363f;
+    --accent: #b4506f; --accent-ink: #f2a9c0; --accent-soft: #35232b; --on-accent: #ffffff;
+    --ok: #6fcf9f; --ok-soft: #1f3a2e; --bad: #f08a96; --bad-soft: #3a2328; --hl: #4a4220;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #2a1f27; --card: #35272f; --ink: #f3eff9; --muted: #b3acc6; --line: #5a4350;
-  --accent: #f29bb8; --accent-ink: #ffb8cf; --accent-soft: #4a2f3b; --on-accent: #3a1626;
-  --ok: #56d09a; --ok-soft: #1b3a2e; --bad: #ff8592; --bad-soft: #4a2229; --hl: #5a4a14;
+  --bg: #18171c; --card: #222127; --ink: #ece9f2; --muted: #a5a2b2; --line: #38363f;
+  --accent: #b4506f; --accent-ink: #f2a9c0; --accent-soft: #35232b; --on-accent: #ffffff;
+  --ok: #6fcf9f; --ok-soft: #1f3a2e; --bad: #f08a96; --bad-soft: #3a2328; --hl: #4a4220;
   color-scheme: dark;
 }
 html, body { margin: 0; overscroll-behavior-y: contain; }
@@ -399,22 +399,22 @@ function saveSettings() { ls.set("dictation-settings", SET); toast("설정을 �
 const PALETTES = [
   { id: "pink", name: "벚꽃 분홍",
     L: { bg: "#fff6f9", card: "#ffffff", line: "#f1cfdb", accent: "#f7a8c0", ink: "#b0305f", soft: "#fde6ee", on: "#3a1626" },
-    D: { bg: "#2a1f27", card: "#35272f", line: "#5a4350", accent: "#f29bb8", ink: "#ffb8cf", soft: "#4a2f3b", on: "#3a1626" } },
+    D: { bg: "#18171c", card: "#222127", line: "#38363f", accent: "#b4506f", ink: "#f2a9c0", soft: "#35232b", on: "#ffffff" } },
   { id: "sky", name: "하늘 파랑",
     L: { bg: "#f3f9ff", card: "#ffffff", line: "#c9dff2", accent: "#9ccbf2", ink: "#1f6aa8", soft: "#e3f1fd", on: "#10253a" },
-    D: { bg: "#1b2530", card: "#232f3c", line: "#3d5063", accent: "#8cc0ee", ink: "#a9d4f7", soft: "#28425a", on: "#10253a" } },
+    D: { bg: "#18171c", card: "#222127", line: "#38363f", accent: "#3a76aa", ink: "#9cc8ee", soft: "#1f2f3d", on: "#ffffff" } },
   { id: "mint", name: "민트 초록",
     L: { bg: "#f2fbf7", card: "#ffffff", line: "#c4e6d8", accent: "#93dcc0", ink: "#1c7a5c", soft: "#def6ec", on: "#0f2a1f" },
-    D: { bg: "#1a2822", card: "#22332b", line: "#3b5a4c", accent: "#86d4b6", ink: "#a4e6cd", soft: "#264638", on: "#0f2a1f" } },
+    D: { bg: "#18171c", card: "#222127", line: "#38363f", accent: "#2a8061", ink: "#8fdcc0", soft: "#1d332b", on: "#ffffff" } },
   { id: "lavender", name: "라벤더 보라",
     L: { bg: "#f7f4ff", card: "#ffffff", line: "#dad0f2", accent: "#c4b2f0", ink: "#6a49b8", soft: "#ece6fc", on: "#21163f" },
-    D: { bg: "#231f31", card: "#2d2840", line: "#4d4670", accent: "#b9a6ee", ink: "#cfc0f8", soft: "#3b3260", on: "#21163f" } },
+    D: { bg: "#18171c", card: "#222127", line: "#38363f", accent: "#7a5cc4", ink: "#c4b4f2", soft: "#2c2640", on: "#ffffff" } },
   { id: "peach", name: "복숭아 주황",
     L: { bg: "#fff7f2", card: "#ffffff", line: "#f2d8c8", accent: "#ffc0a0", ink: "#b5532a", soft: "#ffe9dc", on: "#3a1b0c" },
-    D: { bg: "#2c211c", card: "#382b24", line: "#5e4a3e", accent: "#f5b28f", ink: "#ffcdb0", soft: "#4a3328", on: "#3a1b0c" } },
+    D: { bg: "#18171c", card: "#222127", line: "#38363f", accent: "#b05835", ink: "#ffc3a3", soft: "#3a2a22", on: "#ffffff" } },
   { id: "lemon", name: "레몬 노랑",
     L: { bg: "#fffcf0", card: "#ffffff", line: "#eee0a8", accent: "#f6e08a", ink: "#8a6a00", soft: "#fff6cc", on: "#332a00" },
-    D: { bg: "#29261a", card: "#353122", line: "#5a5338", accent: "#eed87e", ink: "#f6e8a2", soft: "#4a4423", on: "#332a00" } }
+    D: { bg: "#18171c", card: "#222127", line: "#38363f", accent: "#8f7410", ink: "#f0dc86", soft: "#38321a", on: "#ffffff" } }
 ];
 const root = document.documentElement;
 let origTheme = root.getAttribute("data-theme");
