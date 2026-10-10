@@ -149,7 +149,7 @@ td:last-child { min-width: 180px; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; }
 
 /* 설정 */
-.opts { display: flex; flex-wrap: wrap; gap: 4px 20px; }
+.opts { display: flex; flex-wrap: wrap; gap: 0 20px; }
 .opts label { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; font-size: 16px; }
 .opts input { appearance: none; -webkit-appearance: none; margin: 0; width: 24px; height: 24px; flex-shrink: 0; display: grid; place-content: center; background: var(--card); border: 2px solid var(--muted); border-radius: 50%; cursor: pointer; }
 .opts input[type="checkbox"] { border-radius: 7px; }
@@ -159,7 +159,10 @@ td:last-child { min-width: 180px; }
 .opts input:focus-visible { outline: 3px solid var(--accent-ink); outline-offset: 2px; }
 .opts input:disabled + span, .opts label:has(input:disabled) { opacity: .55; cursor: default; }
 #voiceSel { width: 100%; }
-.subh { font-size: 18px; color: var(--ink); padding-top: 4px; }
+.subh { font-size: 18px; color: var(--ink); padding-top: 6px; }
+#settings .paper { gap: 8px; }
+#settings .paper > .actions { padding-top: 4px; }
+.tip:empty { display: none; }
 .sw { font-size: 17px; }
 .swatches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .sw { min-height: 56px; display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--card); border: 2px solid var(--line); border-radius: 12px; text-align: left; }
@@ -291,15 +294,6 @@ textarea:focus { outline: none; border-color: var(--accent-ink); box-shadow: 0 0
       <div class="swatches" id="swatches"></div>
     </div>
 
-    <div class="paper" id="voiceBox">
-      <h2>소리설정</h2>
-      <select id="voiceSel" aria-label="목소리"></select>
-      <div class="actions edactions">
-        <button class="ghost" id="voiceTest" type="button">미리 듣기</button>
-      </div>
-      <p class="tip" id="voiceTip"></p>
-    </div>
-
     <div class="paper">
       <h2>문제 문장 고치기</h2>
       <p class="tip">사진에서 잘못 옮긴 문장이 있으면 여기서 고쳐요. 문제는 띄어쓰기와 문장부호 없이 나오고, 정답은 여기에 쓴 그대로 채점돼요.</p>
@@ -311,6 +305,15 @@ textarea:focus { outline: none; border-color: var(--accent-ink); box-shadow: 0 0
         <button class="primary" id="edSave" type="button">저장</button>
       </div>
       <p class="status" id="edStatus" role="status"></p>
+    </div>
+
+    <div class="paper" id="voiceBox">
+      <h2>소리설정</h2>
+      <select id="voiceSel" aria-label="목소리"></select>
+      <div class="actions edactions">
+        <button class="ghost" id="voiceTest" type="button">미리 듣기</button>
+      </div>
+      <p class="tip" id="voiceTip"></p>
     </div>
 
     <div class="paper">
