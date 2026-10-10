@@ -924,9 +924,7 @@ function refreshVoices() {
   const auto = new Option("자동 (기기 기본 음성)", "");
   sel.replaceChildren(auto, ...list.map(v => new Option(voiceLabel(v), v.voiceURI)));
   sel.value = list.some(v => v.voiceURI === SET.voice) ? SET.voice : "";
-  $("voiceTip").textContent = list.length
-    ? (list.length === 1 ? "이 기기에 설치된 한국어 음성이 하나예요. 아이폰은 설정 → 손쉬운 사용 → 말하기 콘텐츠 → 음성 → 한국어에서 향상된 음성을 내려받으면 여기에 나타날 수 있어요." : "")
-    : "이 기기에서 한국어 음성 목록을 찾지 못했어요. 기본 음성으로 읽어요.";
+  $("voiceTip").textContent = list.length ? "" : "이 기기에서 한국어 음성 목록을 찾지 못했어요. 기본 음성으로 읽어요.";
 }
 $("btnListen").addEventListener("click", speak);
 if (!CAN_SPEAK) $("btnListen").hidden = true;
