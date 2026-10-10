@@ -538,15 +538,17 @@ function setBk(msg, err) { const el = $("bkStatus"); el.textContent = msg; el.cl
 function exportItems() {
   const items = {};
   DATA.forEach((d, i) => { if (d.items.some((t, k) => t !== DEFAULTS[i][k])) items[d.g] = d.items; });
+  const edited = Object.keys(items).length;
+  if (!edited) DATA.forEach(d => { items[d.g] = d.items; });
   const n = Object.keys(items).length;
-  if (!n) { $("bkText").value = ""; $("bkText").hidden = true; setBk("고친 문장이 없어서 내보낼 내용이 없어요.", true); return; }
   const box = $("bkText");
   box.hidden = false;
   box.value = JSON.stringify({ app: "dictation-note", version: 1, items });
   box.focus(); box.select();
-  const done = () => setBk(n + "개 급수를 내보냈어요. 글을 복사해 두세요.");
+  const what = edited ? n + "개 급수를" : "고친 문장이 없어서 모든 급수를";
+  const done = () => setBk(what + " 내보냈어요. 글을 복사해 두세요.");
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(box.value).then(() => setBk(n + "개 급수를 내보내고 복사했어요."), done);
+    navigator.clipboard.writeText(box.value).then(() => setBk(what + " 내보내고 복사했어요."), done);
   } else done();
 }
 function parseBackup(text) {
