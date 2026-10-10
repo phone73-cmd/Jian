@@ -842,25 +842,29 @@ function speak() { say(S.grade.items[S.order[S.idx]]); }
 const HELPER_VOICES = ["eddy", "flo", "grandma", "grandpa", "reed", "rocko", "sandy", "shelley",
   "albert", "bad", "bahh", "bells", "boing", "bubbles", "cellos", "good", "jester", "organ", "superstar", "trinoids", "whisper", "wobble", "zarvox", "fred", "junior", "ralph", "espeak"];
 const GOOD_VOICE = /프리미엄|고급|향상|premium|enhanced/i;
-/* 이름이 같아도 기기가 주는 voiceURI(compact/enhanced/premium)로 음질 등급을 알려 준다 */
+/* 음질 등급: 기기가 주는 voiceURI로 판단한다. super-compact(간이) < compact(기본) < enhanced(향상된) < premium(프리미엄) */
+const TIERS = [["super-compact", 0, "간이"], ["compact", 1, "기본"], ["enhanced", 2, "향상된"], ["premium", 3, "프리미엄"]];
+function voiceTier(v) {
+  const uri = (v.voiceURI || "").toLowerCase();
+  const hit = TIERS.find(t => uri.includes(t[0]));
+  if (hit) return hit;
+  if (GOOD_VOICE.test(v.name)) return ["", 2, ""];
+  return ["", 1, ""];
+}
 function voiceLabel(v) {
-  let label = v.name;
-  if (!GOOD_VOICE.test(v.name)) {
-    const m = /compact|enhanced|premium/i.exec(v.voiceURI || "");
-    const grade = m && { compact: "기본", enhanced: "향상된", premium: "프리미엄" }[m[0].toLowerCase()];
-    if (grade) label += " (" + grade + ")";
-  }
+  const t = voiceTier(v);
+  const label = v.name + (t[2] && !GOOD_VOICE.test(v.name) ? " (" + t[2] + ")" : "");
   return label + (v.localService ? "" : " (온라인)");
 }
-const isGoodVoice = v => GOOD_VOICE.test(v.name) || /enhanced|premium/i.test(v.voiceURI || "");
 function koVoices() {
   try {
+    /* super-compact(간이) 음성은 음질이 낮아서 항상 숨긴다. 목록이 비어도 '자동'으로 기기 기본 음성을 쓸 수 있다 */
     const all = speechSynthesis.getVoices()
-      .filter(v => /^ko([-_]|$)/i.test(v.lang) && !HELPER_VOICES.includes(v.name.trim().split(/[\s(]/)[0].toLowerCase()));
-    /* 같은 이름의 고음질 음성이 있으면 기본(compact) 음성은 숨긴다. 고음질이 없으면 목록이 비지 않게 남긴다 */
+      .filter(v => /^ko([-_]|$)/i.test(v.lang) && !/super-compact/i.test(v.voiceURI || "") && !HELPER_VOICES.includes(v.name.trim().split(/[\s(]/)[0].toLowerCase()));
+    /* 같은 이름에 더 좋은 등급이 있으면 낮은 등급은 숨긴다. 가장 좋은 등급은 항상 남아서 목록이 비지 않는다 */
     return all
-      .filter(v => !(/compact/i.test(v.voiceURI || "") && all.some(o => o !== v && o.name === v.name && !/compact/i.test(o.voiceURI || ""))))
-      .sort((a, b) => isGoodVoice(b) - isGoodVoice(a));
+      .filter(v => !all.some(o => o !== v && o.name === v.name && voiceTier(o)[1] > voiceTier(v)[1]))
+      .sort((a, b) => voiceTier(b)[1] - voiceTier(a)[1]);
   } catch (e) { return []; }
 }
 function dumpVoices() {
