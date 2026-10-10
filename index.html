@@ -49,7 +49,6 @@
 }
 html, body { margin: 0; overscroll-behavior-y: contain; }
 [hidden] { display: none !important; }
-.ver { text-align: right; color: var(--muted); font-size: 13px; padding-top: 24px; }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body {
   background: var(--bg); color: var(--ink);
@@ -66,6 +65,7 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 /* 상단 */
 .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .brand { font-family: var(--font-display); font-size: 25px; letter-spacing: .02em; min-width: 0; }
+.brand .vtag { font-family: var(--font-body); font-size: 12px; color: var(--muted); letter-spacing: 0; margin-left: 6px; white-space: nowrap; }
 .brand small { font-family: var(--font-body); font-size: 14px; color: var(--muted); margin-left: 8px; letter-spacing: 0; }
 .nav { display: flex; gap: 8px; flex-shrink: 0; }
 .pill { min-height: 44px; border: 2px solid var(--line); background: var(--card); border-radius: 999px; padding: 6px 16px; }
@@ -187,7 +187,7 @@ textarea:focus { outline: none; border-color: var(--accent-ink); box-shadow: 0 0
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(24px + env(safe-area-inset-bottom, 0px)); background: var(--accent-ink); color: var(--card); padding: 10px 20px; border-radius: 999px; font-family: var(--font-display); z-index: 10; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
 @media (max-width: 520px) {
   body { font-size: 16px; }
-  .brand small { display: none; }
+  #subtitle { display: none; }
   .cell { font-size: 18px; }
   .ans-row { flex-direction: column; }
   .ans-row .primary { width: 100%; }
@@ -203,7 +203,7 @@ textarea:focus { outline: none; border-color: var(--accent-ink); box-shadow: 0 0
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand">받아쓰기 공책<small id="subtitle">한글, 틀려도 괜찮아!</small></div>
+    <div class="brand">받아쓰기 공책<small class="vtag" id="ver"></small><small id="subtitle">한글, 틀려도 괜찮아!</small></div>
     <nav class="nav">
       <button class="pill" id="btnHome" type="button" hidden>홈</button>
       <button class="pill" id="btnSettings" type="button" aria-label="설정">설정</button>
@@ -306,8 +306,6 @@ textarea:focus { outline: none; border-color: var(--accent-ink); box-shadow: 0 0
     </div>
   </section>
 </div>
-
-<footer class="ver" id="verBox">받아쓰기 공책 <span id="ver"></span></footer>
 
 <div id="confirmBox" class="modal" hidden>
   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="cfTitle">
