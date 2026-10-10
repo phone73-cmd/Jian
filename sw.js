@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dictation-note-v1.0.8';
+const CACHE_NAME = 'dictation-note-v1.0.9';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (event) => {
