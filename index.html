@@ -279,18 +279,8 @@ textarea:focus { outline: none; border-color: var(--accent-ink); box-shadow: 0 0
       </div>
     </div>
 
-    <div class="paper" id="voiceBox">
-      <h2>소리</h2>
-      <label class="subh" for="voiceSel">목소리</label>
-      <select id="voiceSel"></select>
-      <div class="actions edactions">
-        <button class="ghost" id="voiceTest" type="button">미리 듣기</button>
-      </div>
-      <p class="tip" id="voiceTip"></p>
-    </div>
-
     <div class="paper">
-      <h2>화면</h2>
+      <h2>화면설정</h2>
       <h3 class="subh">밝기</h3>
       <div class="opts" role="radiogroup" aria-label="밝기">
         <label for="thSys"><input type="radio" name="theme" id="thSys" value="system"><span>기기설정</span></label>
@@ -299,6 +289,15 @@ textarea:focus { outline: none; border-color: var(--accent-ink); box-shadow: 0 0
       </div>
       <h3 class="subh">색상</h3>
       <div class="swatches" id="swatches"></div>
+    </div>
+
+    <div class="paper" id="voiceBox">
+      <h2>소리설정</h2>
+      <select id="voiceSel" aria-label="목소리"></select>
+      <div class="actions edactions">
+        <button class="ghost" id="voiceTest" type="button">미리 듣기</button>
+      </div>
+      <p class="tip" id="voiceTip"></p>
     </div>
 
     <div class="paper">
