@@ -49,7 +49,7 @@
 }
 html, body { margin: 0; }
 [hidden] { display: none !important; }
-.ver { text-align: center; color: var(--muted); font-size: 13px; padding-top: 24px; }
+.ver { text-align: right; color: var(--muted); font-size: 13px; padding-top: 24px; }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body {
   background: var(--bg); color: var(--ink);
@@ -163,7 +163,6 @@ select { min-height: 48px; font: inherit; font-size: 17px; padding: 6px 12px; bo
 .edrow input { flex: 1; min-width: 0; min-height: 48px; font: inherit; font-size: 17px; padding: 8px 12px; border: 2px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--ink); }
 .edrow input:focus { outline: none; border-color: var(--accent-ink); box-shadow: 0 0 0 3px var(--accent-soft); }
 .edrow.changed input { border-color: var(--accent); background: var(--accent-soft); }
-.edrow .mod { font-size: 12px; color: var(--accent-ink); white-space: nowrap; min-width: 3em; }
 .status:empty { display: none; }
 .status { min-height: 1.4em; font-size: 15px; color: var(--ok); margin: 0; }
 
@@ -178,7 +177,6 @@ select { min-height: 48px; font: inherit; font-size: 17px; padding: 6px 12px; bo
   .actions:not(.edactions) > button { flex: 1 1 100%; }
   .score .big { font-size: 46px; }
   .swatches { grid-template-columns: repeat(2, 1fr); }
-  .edrow .mod { display: none; }
   .paper { padding: 14px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -443,8 +441,8 @@ function renderEditor(g, focusIdx) {
     const inp = document.createElement("input");
     inp.type = "text"; inp.id = "ed" + i; inp.value = t; inp.lang = "ko"; inp.autocomplete = "off"; inp.spellcheck = false;
     inp.setAttribute("aria-label", g + "급 " + (i + 1) + "번 문장");
-    const mod = document.createElement("span"); mod.className = "mod"; mod.textContent = t !== DEFAULTS[g - 1][i] ? "수정됨" : "";
-    row.append(n, inp, mod);
+    row.append(n, inp);
+    if (t !== DEFAULTS[g - 1][i]) inp.title = "처음 문장: " + DEFAULTS[g - 1][i];
     return row;
   }));
   if (focusIdx != null) {
