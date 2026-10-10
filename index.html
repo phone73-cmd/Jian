@@ -49,7 +49,6 @@
 }
 html, body { margin: 0; overscroll-behavior-y: contain; }
 [hidden] { display: none !important; }
-.ver { text-align: right; color: var(--muted); font-size: 13px; padding-top: 24px; }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body {
   background: var(--bg); color: var(--ink);
@@ -66,6 +65,7 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 /* 상단 */
 .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .brand { font-family: var(--font-display); font-size: 25px; letter-spacing: .02em; min-width: 0; }
+.brand .vtag { font-family: var(--font-body); font-size: 12px; color: var(--muted); letter-spacing: 0; margin-left: 6px; white-space: nowrap; }
 .brand small { font-family: var(--font-body); font-size: 14px; color: var(--muted); margin-left: 8px; letter-spacing: 0; }
 .nav { display: flex; gap: 8px; flex-shrink: 0; }
 .pill { min-height: 44px; border: 2px solid var(--line); background: var(--card); border-radius: 999px; padding: 6px 16px; }
@@ -157,6 +157,8 @@ td:last-child { min-width: 180px; }
 .opts input[type="checkbox"]:checked::before { content: ""; width: 6px; height: 12px; margin-top: -2px; border: solid var(--on-accent); border-width: 0 3px 3px 0; transform: rotate(45deg); }
 .opts input:focus-visible { outline: 3px solid var(--accent-ink); outline-offset: 2px; }
 .opts input:disabled + span, .opts label:has(input:disabled) { opacity: .55; cursor: default; }
+.subh { font-size: 18px; color: var(--ink); padding-top: 4px; }
+.sw { font-size: 17px; }
 .swatches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .sw { min-height: 56px; display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--card); border: 2px solid var(--line); border-radius: 12px; text-align: left; }
 .sw i { width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0; border: 2px solid var(--card); box-shadow: 0 0 0 1px var(--line); }
@@ -173,14 +175,21 @@ select { min-height: 48px; font: inherit; font-size: 17px; padding: 6px 12px; bo
 .edrow input:focus { outline: none; border-color: var(--accent-ink); box-shadow: 0 0 0 3px var(--accent-soft); }
 .edrow.changed input { border-color: var(--accent); background: var(--accent-soft); }
 .status:empty { display: none; }
+textarea { width: 100%; min-height: 110px; font: inherit; font-size: 15px; line-height: 1.45; padding: 10px 12px; border: 2px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--ink); resize: vertical; word-break: break-all; }
+textarea:focus { outline: none; border-color: var(--accent-ink); box-shadow: 0 0 0 3px var(--accent-soft); }
+.status.err { color: var(--bad); }
 .status { min-height: 1.4em; font-size: 15px; color: var(--ok); margin: 0; }
 
 .ptr { position: fixed; left: 50%; top: calc(8px + env(safe-area-inset-top, 0px)); transform: translate(-50%, -64px); background: var(--card); color: var(--accent-ink); border: 2px solid var(--accent); border-radius: 999px; padding: 6px 18px; font-family: var(--font-display); z-index: 10; pointer-events: none; white-space: nowrap; }
+.modal { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(20, 12, 24, .5); }
+.modal-card { width: 100%; max-width: 360px; background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.25); }
+.modal-card h3 { font-size: 20px; }
+.modal-card p { margin: 0; color: var(--muted); }
 .actions.edactions { justify-content: flex-end; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(24px + env(safe-area-inset-bottom, 0px)); background: var(--accent-ink); color: var(--card); padding: 10px 20px; border-radius: 999px; font-family: var(--font-display); z-index: 10; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
 @media (max-width: 520px) {
   body { font-size: 16px; }
-  .brand small { display: none; }
+  #subtitle { display: none; }
   .cell { font-size: 18px; }
   .ans-row { flex-direction: column; }
   .ans-row .primary { width: 100%; }
@@ -196,7 +205,7 @@ select { min-height: 48px; font: inherit; font-size: 17px; padding: 6px 12px; bo
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand">받아쓰기 공책<small id="subtitle">한글, 틀려도 괜찮아!</small></div>
+    <div class="brand">받아쓰기 공책<small class="vtag" id="ver"></small><small id="subtitle">한글, 틀려도 괜찮아!</small></div>
     <nav class="nav">
       <button class="pill" id="btnHome" type="button" hidden>홈</button>
       <button class="pill" id="btnSettings" type="button" aria-label="설정">설정</button>
@@ -207,7 +216,6 @@ select { min-height: 48px; font: inherit; font-size: 17px; padding: 6px 12px; bo
   <section id="home" class="col">
     <div class="guide">
       <p class="now" id="modeInfo"></p>
-      <p>문제를 듣거나 붙여 쓴 글자를 보고, 띄어쓰기와 문장부호를 넣어 바르게 써 보세요. 틀린 곳은 빨간 칸으로 알려 줘요.</p>
     </div>
     <div class="grades" id="grades"></div>
     <div class="paper" id="records" hidden></div>
@@ -249,7 +257,7 @@ select { min-height: 48px; font: inherit; font-size: 17px; padding: 6px 12px; bo
 
   <!-- 설정 -->
   <section id="settings" class="col" hidden>
-    <p class="tip">연습 방식, 채점, 화면 설정은 바꾸는 즉시 저장돼요. 문제 문장은 아래 저장 버튼을 눌러야 저장돼요.</p>
+    <p class="tip">설정은 바꾸는 즉시 저장됨.</p>
     <div class="paper">
       <h2>연습 방식</h2>
       <div class="opts" role="radiogroup" aria-label="연습 방식">
@@ -264,13 +272,13 @@ select { min-height: 48px; font: inherit; font-size: 17px; padding: 6px 12px; bo
 
     <div class="paper">
       <h2>화면</h2>
-      <div class="label">밝기</div>
+      <h3 class="subh">밝기</h3>
       <div class="opts" role="radiogroup" aria-label="밝기">
         <label for="thSys"><input type="radio" name="theme" id="thSys" value="system"><span>기기설정</span></label>
         <label for="thLight"><input type="radio" name="theme" id="thLight" value="light"><span>라이트모드</span></label>
         <label for="thDark"><input type="radio" name="theme" id="thDark" value="dark"><span>다크모드</span></label>
       </div>
-      <div class="label">색상</div>
+      <h3 class="subh">색상</h3>
       <div class="swatches" id="swatches"></div>
     </div>
 
@@ -281,16 +289,35 @@ select { min-height: 48px; font: inherit; font-size: 17px; padding: 6px 12px; bo
       <h3 class="edtitle" id="edTitle"></h3>
       <div class="col" id="edList" style="gap:8px"></div>
       <div class="actions edactions">
-        <button class="ghost" id="edReset" type="button">문장 초기화</button>
+        <button class="ghost" id="edReset" type="button">초기화</button>
         <button class="primary" id="edSave" type="button">저장</button>
       </div>
       <p class="status" id="edStatus" role="status"></p>
     </div>
+
+    <div class="paper">
+      <h2>문장 백업</h2>
+      <p class="tip">고친 문장은 이 기기에만 저장돼요. 다른 기기에서 쓰려면 이 기기에서 내보내기를 눌러 글을 복사하고, 다른 기기에서 아래 칸에 붙여 넣어 가져오기를 눌러요.</p>
+      <textarea id="bkText" rows="5" spellcheck="false" aria-label="백업 글" placeholder="내보낸 글이 여기에 나와요. 가져올 때는 여기에 붙여 넣어요."></textarea>
+      <div class="actions edactions">
+        <button class="ghost" id="bkExport" type="button">내보내기</button>
+        <button class="primary" id="bkImport" type="button">가져오기</button>
+      </div>
+      <p class="status" id="bkStatus" role="status"></p>
+    </div>
   </section>
 </div>
 
-<footer class="ver" id="verBox">받아쓰기 공책 <span id="ver"></span></footer>
-
+<div id="confirmBox" class="modal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="cfTitle">
+    <h3 id="cfTitle"></h3>
+    <p id="cfMsg"></p>
+    <div class="actions edactions">
+      <button class="ghost" id="cfNo" type="button">취소</button>
+      <button class="primary" id="cfYes" type="button">초기화</button>
+    </div>
+  </div>
+</div>
 <div id="toast" class="toast" role="status" hidden></div>
 <div id="ptr" class="ptr" aria-hidden="true" hidden></div>
 
@@ -439,7 +466,27 @@ function initSettings() {
     return b;
   }));
   $("edSave").addEventListener("click", saveEditor);
-  $("edReset").addEventListener("click", resetEditor);
+  $("bkExport").addEventListener("click", exportItems);
+  $("bkImport").addEventListener("click", importItems);
+  $("edReset").addEventListener("click", () => {
+    const g = edCur;
+    if (DATA[g - 1].items.every((t, i) => t === DEFAULTS[g - 1][i])) { $("edStatus").textContent = g + "급은 고친 문장이 없어요."; return; }
+    askConfirm(g + "급 문장을 초기화할까요?", "고친 문장이 모두 처음 상태로 돌아가요. 되돌릴 수 없어요.", "초기화", resetEditor);
+  });
+}
+
+/* 확인창: 확인을 누를 때만 실행한다 */
+function askConfirm(title, msg, yesLabel, onYes) {
+  const box = $("confirmBox");
+  $("cfTitle").textContent = title; $("cfMsg").textContent = msg; $("cfYes").textContent = yesLabel;
+  const close = () => { box.hidden = true; document.removeEventListener("keydown", onKey); $("cfYes").onclick = $("cfNo").onclick = null; box.onclick = null; };
+  const onKey = e => { if (e.key === "Escape") close(); };
+  $("cfNo").onclick = close;
+  $("cfYes").onclick = () => { close(); onYes(); };
+  box.onclick = e => { if (e.target === box) close(); };
+  document.addEventListener("keydown", onKey);
+  box.hidden = false;
+  $("cfNo").focus();
 }
 
 /* 문장 고치기 */
@@ -485,6 +532,46 @@ function resetEditor() {
   renderEditor(g);
   $("edStatus").textContent = g + "급 문장을 처음 상태로 초기화했어요.";
 }
+/* 문장 백업: 고친 급수만 글로 내보내고, 붙여 넣어 가져온다 */
+function setBk(msg, err) { const el = $("bkStatus"); el.textContent = msg; el.classList.toggle("err", !!err); }
+function exportItems() {
+  const items = {};
+  DATA.forEach((d, i) => { if (d.items.some((t, k) => t !== DEFAULTS[i][k])) items[d.g] = d.items; });
+  const n = Object.keys(items).length;
+  if (!n) { $("bkText").value = ""; setBk("고친 문장이 없어서 내보낼 내용이 없어요.", true); return; }
+  const box = $("bkText");
+  box.value = JSON.stringify({ app: "dictation-note", version: 1, items });
+  box.focus(); box.select();
+  const done = () => setBk(n + "개 급수를 내보냈어요. 글을 복사해 두세요.");
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(box.value).then(() => setBk(n + "개 급수를 내보내고 복사했어요."), done);
+  } else done();
+}
+function parseBackup(text) {
+  let obj;
+  try { obj = JSON.parse(text.trim()); } catch (e) { return null; }
+  if (!obj || obj.app !== "dictation-note" || !obj.items || typeof obj.items !== "object") return null;
+  const out = {};
+  for (const k of Object.keys(obj.items)) {
+    const g = Number(k), arr = obj.items[k];
+    if (!Number.isInteger(g) || g < 1 || g > DATA.length) return null;
+    if (!Array.isArray(arr) || arr.length !== DATA[g - 1].items.length || arr.some(t => typeof t !== "string" || t.length > 100)) return null;
+    out[g] = arr.map((t, i) => t.trim() || DEFAULTS[g - 1][i]);
+  }
+  return Object.keys(out).length ? out : null;
+}
+function importItems() {
+  const parsed = parseBackup($("bkText").value);
+  if (!parsed) { setBk("가져올 수 없는 글이에요. 내보내기로 만든 글을 그대로 붙여 넣어 주세요.", true); return; }
+  const gs = Object.keys(parsed);
+  askConfirm(gs.length + "개 급수를 가져올까요?", "이 기기의 " + gs.map(g => g + "급").join(", ") + " 문장이 가져온 문장으로 바뀌어요.", "가져오기", () => {
+    gs.forEach(g => { DATA[g - 1].items = parsed[g]; });
+    persistItems();
+    renderEditor(edCur);
+    setBk(gs.length + "개 급수를 가져왔어요.");
+  });
+}
+
 function openSettings(g, idx) {
   show("settings");
   renderEditor(g || 1, idx);
