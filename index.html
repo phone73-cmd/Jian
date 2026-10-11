@@ -309,6 +309,7 @@ textarea:focus { outline: none; border-color: var(--accent-ink); box-shadow: 0 0
 
     <div class="paper" id="voiceBox">
       <h2>소리설정</h2>
+      <div class="opts"><label for="optSfx"><input type="checkbox" id="optSfx"><span>효과음 (정답·오답·팡파레)</span></label></div>
       <select id="voiceSel" aria-label="목소리"></select>
       <div class="actions edactions">
         <button class="ghost" id="voiceTest" type="button">미리 듣기</button>
@@ -387,7 +388,7 @@ const statStore = { get() { return ls.get("dictation-stats", {}); }, save(a) { l
 }
 
 /* 설정 */
-const SET = Object.assign({ mode: "hear", strict: true, shuffle: false, theme: "system", palette: "pink", voice: "" }, ls.get("dictation-settings", {}));
+const SET = Object.assign({ mode: "hear", strict: true, shuffle: false, theme: "system", palette: "pink", voice: "", sfx: true }, ls.get("dictation-settings", {}));
 let toastTimer = 0;
 function toast(msg) {
   const t = $("toast");
@@ -469,6 +470,8 @@ function initSettings() {
     $("modeHear").disabled = true;
     $("modeHear").nextElementSibling.textContent += " (이 기기에서는 소리를 낼 수 없어요)";
   }
+  $("optSfx").checked = SET.sfx;
+  $("optSfx").addEventListener("change", e => { SET.sfx = e.target.checked; saveSettings(); sound.play("correct"); });
   $("optSpace").checked = SET.strict;
   $("optSpace").addEventListener("change", e => { SET.strict = e.target.checked; saveSettings(); });
   $("optShuffle").checked = SET.shuffle;
@@ -503,6 +506,45 @@ function initSettings() {
   });
 }
 
+/* 효과음: 소리 파일 없이 Web Audio로 만든다. 채점·결과 버튼을 누르는 순간에 켜서, 화면을 누른 뒤에만 소리가 나는 기기(아이폰)에서도 나온다 */
+let actx = null;
+function ac() {
+  try {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === "suspended") actx.resume();
+  } catch (e) {}
+  return actx;
+}
+function tone(f, t0, d, type = "triangle", g = .2, o = {}) {
+  const c = ac(); if (!c) return;
+  const t = c.currentTime + t0, osc = c.createOscillator(), v = c.createGain();
+  osc.type = type; osc.frequency.setValueAtTime(f, t);
+  if (o.glide) osc.frequency.exponentialRampToValueAtTime(o.glide, t + d);
+  v.gain.setValueAtTime(.0001, t); v.gain.exponentialRampToValueAtTime(g, t + .015); v.gain.exponentialRampToValueAtTime(.0001, t + d);
+  if (o.lp) { const fl = c.createBiquadFilter(); fl.type = "lowpass"; fl.frequency.value = o.lp; osc.connect(fl); fl.connect(v); } else osc.connect(v);
+  v.connect(c.destination); osc.start(t); osc.stop(t + d + .05);
+}
+function hiss(t0, d, g, hp) {
+  const c = ac(); if (!c) return;
+  const n = Math.max(1, Math.floor(c.sampleRate * d)), buf = c.createBuffer(1, n, c.sampleRate), data = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / n);
+  const src = c.createBufferSource(), v = c.createGain(), fl = c.createBiquadFilter(), t = c.currentTime + t0;
+  src.buffer = buf; fl.type = "highpass"; fl.frequency.value = hp;
+  v.gain.setValueAtTime(g, t); v.gain.exponentialRampToValueAtTime(.0001, t + d);
+  src.connect(fl); fl.connect(v); v.connect(c.destination); src.start(t);
+}
+const sound = {
+  play(name) { if (SET.sfx) { try { sound[name](); } catch (e) {} } },
+  correct() { tone(880, 0, .28, "triangle", .22); tone(1318.5, .11, .5, "triangle", .22); tone(2637, .11, .3, "sine", .04); },
+  wrong() { tone(311, 0, .34, "triangle", .2, { glide: 196 }); tone(233, .2, .34, "triangle", .14, { glide: 147 }); },
+  pop() { tone(170, 0, .14, "sine", .1, { glide: 60 }); hiss(0, .07, .04, 3000); },
+  fanfare() {
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, i * .11, .15, "sawtooth", .1, { lp: 2400 }));
+    [523.25, 659.25, 783.99, 1046.5].forEach(f => tone(f, .5, 1.2, "sawtooth", .08, { lp: 2200 }));
+    hiss(.5, .8, .05, 5000);
+  }
+};
+
 /* 만점 폭죽: 결과 화면이 열릴 때 한 번 터뜨리고, 모두 사라지면 닫는다. 화면을 누르면 바로 꺼진다 */
 const fxCv = $("fx"), fxCtx = fxCv.getContext("2d"), fxTxt = $("fxText");
 let fxParts = [], fxRaf = 0, fxTimers = [], fxBursting = false;
@@ -535,6 +577,7 @@ function playFireworks(text) {
   stopFx();
   fxTxt.textContent = text;
   void fxTxt.offsetWidth; fxTxt.classList.add("on");
+  sound.play("fanfare");
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { fxTimers.push(setTimeout(stopFx, 2200)); return; }
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   fxCv.width = Math.round(innerWidth * dpr); fxCv.height = Math.round(innerHeight * dpr);
@@ -545,6 +588,7 @@ function playFireworks(text) {
   fxBursting = true;
   [0, 350, 750, 1100, 1500, 1900, 2300].forEach(t => fxTimers.push(setTimeout(() => {
     fxBurst(innerWidth * (.2 + Math.random() * .6), innerHeight * (.18 + Math.random() * .4), colors);
+    sound.play("pop");
   }, t)));
   fxTimers.push(setTimeout(() => { fxBursting = false; }, 2400));
   fxRaf = requestAnimationFrame(fxFrame);
@@ -827,6 +871,7 @@ function check() {
   const mine = $("answer").value.trim().replace(/\s+/g, " ");
   const r = diff(text, mine, S.strict);
   S.results.push({ q: text, mine, ok: r.ok });
+  sound.play(r.ok ? "correct" : "wrong");
   S.checked = true;
   $("answer").disabled = true;
   $("tip").hidden = true;
